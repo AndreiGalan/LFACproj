@@ -23,12 +23,13 @@ extern int yylineno;
 
 
 %%
-program			: declarations blocks MAIN_BLOC {printf("program corect sintactic\n");}
+program			: blocks MAIN_BLOC {printf("program corect sintactic\n");}
 				;
 
 blocks 			: functions blocks
 				| procedures blocks
-				| 
+				| declarations blocks
+				|
 				;
 
 MAIN_BLOC 		: MAIN {printf("main\n");} LB statements RB
@@ -38,9 +39,12 @@ declarations	: declaration ';'
 				| declarations declaration ';'
 				;
 
-declaration 	: ISCONT TYPE ID
-				| ISCONT TYPE ID '[' NR ']'
-				;
+declaration 	: CONST TYPE ID 
+				| CONST TYPE ID '[' NR ']' 
+				| TYPE ID
+				| TYPE ID '[' NR ']'
+				; 
+				
 
 functions 		: functions function
         		| function
@@ -84,9 +88,7 @@ statement		: ID ASSIGN constant_value
 				| declaration
 				;
         
-ISCONT 			: CONST
-				| 
-				;
+
 
 %%
 

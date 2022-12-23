@@ -1,5 +1,4 @@
-string str;
-const int i[5];
+
 
 pp()
 {
@@ -17,7 +16,7 @@ main
 {
     str := "salut";
     i := -1;
-    int ll;
+    const int ll;
     ll := 5;
     k := 1;
 }
