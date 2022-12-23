@@ -9,51 +9,84 @@ extern int yylineno;
 %token TYPE SINGLECHAR CONST BEGIN_BLOC END_BLOC IF ELSE WHILE FOR CLASS 
 	CLASS_SPEC BOOL_TRUE BOOL_FALSE LESS LESSOREQ GREATER GREATEROREQ PLUS 
 	MINUS MULT SLASH AND OR NEG STR_OP ID ASSIGN FLOAT NR LB RB
-	STRING
+	STRING RETURN MAIN
 
 %start program
 
 %right ASSIGN
-%left '+' '-'
-%left '*' '/'
-%left '<' '>' "<=" ">="
-%left "||"
-%left "&&"
-%left '!'
+%left PLUS MINUS
+%left MULT SLASH
+%left LESS GREATER LESSOREQ GREATEROREQ
+%left OR
+%left AND
+%left NEG
+
+
 %%
-program		: declaratii bloc {printf("program corect sintactic\n");}
-			| bloc
-     		;
+program			: declarations blocks MAIN_BLOC {printf("program corect sintactic\n");}
+				;
 
-declaratii 	: declaratie ';'
-	   		| declaratii declaratie ';'
-	   		;
+blocks 			: functions blocks
+				| procedures blocks
+				| 
+				;
 
-declaratie 	: ISCONT TYPE ID
-			| ISCONT TYPE ID '[' NR ']'
-           	;
+MAIN_BLOC 		: MAIN {printf("main\n");} LB statements RB
+     			;
 
-bloc 		: BEGIN_BLOC {printf("main\n");}  statements END_BLOC 
-     		;
+declarations	: declaration ';'
+				| declarations declaration ';'
+				;
 
-statements	: statement ';'
-      		| statements statement ';'
-      		;
+declaration 	: ISCONT TYPE ID
+				| ISCONT TYPE ID '[' NR ']'
+				;
+
+functions 		: functions function
+        		| function
+        		;
+
+function		: TYPE ID '(' params ')' LB statements rtn RB
+        		| TYPE ID '(' ')' LB statements rtn RB
+        		;
+
+rtn 			: RETURN ID ';'
+				| RETURN constant_value ';'
+				;
+
+constant_value	: NR
+				| FLOAT
+				| STRING
+				| SINGLECHAR
+				| BOOL_TRUE
+				| BOOL_FALSE	
+				;
+
+procedures 		: procedures procedure
+        		| procedure
+        		;
+
+procedure 		: ID '(' params ')' LB statements RB
+				| ID '(' ')' LB statements RB
+				;
+
+params 			: declaration ',' params
+       			| declaration
+       			;
+
+statements		: statement ';'
+      			| statements statement ';'
+				| 
+      			;
 
 
-statement	: ID ASSIGN ID
-         	| ID ASSIGN NR
-			| ID ASSIGN FLOAT
-			| ID ASSIGN STRING	
-			| ID ASSIGN SINGLECHAR
-			| ID ASSIGN BOOL_TRUE
-			| ID ASSIGN BOOL_FALSE	
-			| declaratie
-         	;
+statement		: ID ASSIGN constant_value
+				| declaration
+				;
         
-ISCONT 		: CONST
-			| 
-			;
+ISCONT 			: CONST
+				| 
+				;
 
 %%
 

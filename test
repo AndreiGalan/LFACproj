@@ -1,11 +1,23 @@
 string str;
 const int i[5];
 
+pp()
+{
+    i := 1;
+}
 
-begin:
+int lol(int i, int b)
+{
+    i := -1;
+
+    return i;
+}
+
+main
+{
     str := "salut";
     i := -1;
     int ll;
     ll := 5;
-    k := true;
-end;
+    k := 1;
+}

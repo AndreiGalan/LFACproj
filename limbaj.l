@@ -7,9 +7,9 @@
 
 %%
 "int"|"float"|"char"|"string"|"bool" { return TYPE;}
+"main" {return MAIN;}
+"return" {return RETURN;}
 "const" {return CONST;}
-"begin:" {return BEGIN_BLOC;}
-"end;" {return END_BLOC;}
 "if" {return IF;}
 "else" {return ELSE;}
 "while" {return WHILE;}

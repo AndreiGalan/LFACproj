@@ -1,0 +1,6 @@
+*
+!.gitignore
+!limbaj.l
+!limbaj.y
+!Makefile
+!test
