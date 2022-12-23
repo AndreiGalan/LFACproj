@@ -6,90 +6,133 @@ extern int yylineno;
 
 %}
 
-%token TYPE SINGLECHAR CONST BEGIN_BLOC END_BLOC IF ELSE WHILE FOR CLASS 
-	CLASS_SPEC BOOL_TRUE BOOL_FALSE LESS LESSOREQ GREATER GREATEROREQ PLUS 
-	MINUS MULT SLASH AND OR NEG STR_OP ID ASSIGN FLOAT NR LB RB
-	STRING RETURN MAIN
+%token 	MAIN CONST TYPE ID 
+		FUNCTION ARROW RETURN 
+		IF ELSE WHILE FOR
+		CLASS CLASS_SPEC MEMBER_ACCESS
+		NEQ EQ LESS LESSOREQ GREATER GREATEROREQ
+		INCREMENT DECREMENT PLUS MINUS MULT SLASH REMAIDER
+		AND OR NEG
+		ASSIGN 
+		NR FLOAT STRING CHAR BOOL
 
 %start program
 
 %right ASSIGN
-%left PLUS MINUS
-%left MULT SLASH
-%left LESS GREATER LESSOREQ GREATEROREQ
 %left OR
 %left AND
+%left EQ NEQ
+%left LESS GREATER LESSOREQ GREATEROREQ
+%left PLUS MINUS
+%left MULT SLASH REMAIDER
 %left NEG
+%left INCREMENT DECREMENT
+%left MEMBER_ACCESS
 
 
 %%
-program			: blocks MAIN_BLOC {printf("program corect sintactic\n");}
+program			: prog_parts MAIN_BLOC {printf("program corect sintactic\n");}
 				;
 
-blocks 			: functions blocks
-				| procedures blocks
-				| declarations blocks
+prog_parts 		: prog_parts function
+				| prog_parts declaration ';'
+				| prog_parts definition ';'
+				| prog_parts class
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n");} LB statements RB
+MAIN_BLOC 		: MAIN {printf("main\n");} '{' function_block '}'
      			;
 
-declarations	: declaration ';'
-				| declarations declaration ';'
+/* CLASS */
+class			: CLASS ID '{' class_block '}'
 				;
 
-declaration 	: CONST TYPE ID 
-				| CONST TYPE ID '[' NR ']' 
-				| TYPE ID
-				| TYPE ID '[' NR ']'
-				; 
-				
+class_block		: class_block CLASS_SPEC function
+				| class_block CLASS_SPEC declaration ';'
+				| class_block CLASS_SPEC definition ';'
+				| 
+				;
 
-functions 		: functions function
-        		| function
+/*FUNCTION*/
+
+function		: FUNCTION ID '(' params ')' ARROW TYPE '{' function_block rtn '}'
+        		| FUNCTION ID '(' params ')' '{' function_block '}'
         		;
 
-function		: TYPE ID '(' params ')' LB statements rtn RB
-        		| TYPE ID '(' ')' LB statements rtn RB
-        		;
+params 			: declaration ',' params
+       			| declaration
+				|
+       			;
+
+function_block 	: function_block assignments 
+				| function_block declaration ';'
+				| function_block definition ';'
+				| function_block while
+				| function_block for
+				| function_block if
+				|
+				;
 
 rtn 			: RETURN ID ';'
 				| RETURN constant_value ';'
 				;
 
+
+/*DECLARATION DEFINITION*/
+declaration 	: TYPE ID 
+				| TYPE ID '[' NR ']' 
+				; 
+
+definition  	: CONST TYPE ID ASSIGN constant_value
+				| TYPE ID ASSIGN constant_value
+				| CONST TYPE ID '[' NR ']'
+				| TYPE ID '[' NR ']'
+				;
+
+
 constant_value	: NR
 				| FLOAT
 				| STRING
-				| SINGLECHAR
-				| BOOL_TRUE
-				| BOOL_FALSE	
+				| CHAR
+				| BOOL	
 				;
 
-procedures 		: procedures procedure
-        		| procedure
-        		;
-
-procedure 		: ID '(' params ')' LB statements RB
-				| ID '(' ')' LB statements RB
-				;
-
-params 			: declaration ',' params
-       			| declaration
-       			;
-
-statements		: statement ';'
-      			| statements statement ';'
+assignments		: assignment ';'
+      			| assignments assignment ';'
 				| 
       			;
 
 
-statement		: ID ASSIGN constant_value
-				| declaration
+assignment		: ID ASSIGN constant_value
 				;
         
+/*Control flow statements*/
+bool_statement 	: bool_expresion
+				| bool_statement AND bool_statement
+				| bool_statement OR bool_statement
+				| NEG bool_statement
+				;
 
+bool_expresion	: BOOL NEQ BOOL
+				| BOOL EQ BOOL
+				| BOOL LESS BOOL
+				| BOOL LESSOREQ BOOL
+				| BOOL GREATER BOOL
+				| BOOL GREATEROREQ BOOL
+				| BOOL
+				;
 
+while  			: WHILE '(' bool_statement ')' '{' function_block '}'
+				;
+
+for				: FOR '(' definition ';' bool_statement ';' ')' '{' function_block '}'
+				| FOR '(' assignment ';' bool_statement ';' ')' '{' function_block '}'
+				;
+
+if 				: IF '(' bool_statement ')' '{' function_block '}'
+				| IF '(' bool_statement ')' '{' function_block '}' ELSE '{' function_block '}'
+				;
 %%
 
 
