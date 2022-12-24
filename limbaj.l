@@ -34,9 +34,13 @@
 "++" {return INCREMENT;}
 "--" {return DECREMENT;}
 "+" {return PLUS;}
+"+=" {return PLUSA;}
 "-" {return MINUS;}
+"-=" {return MINUSA;}
 "*" {return MULT;}
+"*=" {return MULTA;}
 "/" {return SLASH;}
+"/=" {return SLASHA;}
 "%" {return REMAIDER; }
 
 "&&" {return AND;}

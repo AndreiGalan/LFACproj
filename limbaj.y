@@ -11,14 +11,14 @@ extern int yylineno;
 		IF ELSE WHILE FOR
 		CLASS CLASS_SPEC MEMBER_ACCESS
 		NEQ EQ LESS LESSOREQ GREATER GREATEROREQ
-		INCREMENT DECREMENT PLUS MINUS MULT SLASH REMAIDER
+		INCREMENT DECREMENT PLUS MINUS MULT SLASH PLUSA MINUSA MULTA SLASHA REMAIDER
 		AND OR NEG
 		ASSIGN 
 		NR FLOAT STRING CHAR BOOL
 
 %start program
 
-%right ASSIGN
+%right ASSIGN MULTA SLASHA PLUSA MINUSA
 %left OR
 %left AND
 %left EQ NEQ
@@ -75,7 +75,7 @@ function_block 	: function_block assignments
 				;
 
 rtn 			: RETURN ID ';'
-				| RETURN constant_value ';'
+				| RETURN item ';'
 				;
 
 
@@ -103,10 +103,28 @@ assignments		: assignment ';'
 				| 
       			;
 
-
-assignment		: ID ASSIGN constant_value
+shortcuts		: PLUSA
+				| MINUSA
+				| MULTA
+				| SLASHA
 				;
-        
+
+assignment		: ID ASSIGN item
+				| ID ASSIGN operations
+				| ID shortcuts item
+				| ID shortcuts operations
+				| ID INCREMENT
+				| ID DECREMENT
+				;
+
+
+operations 		: item 
+				| operations PLUS operations
+				| operations MINUS operations
+				| operations SLASH operations
+				| operations MULT operations
+				| '(' operations ')'
+				;
 /*Control flow statements*/
 bool_statement 	: bool_expresion
 				| bool_statement AND bool_statement
@@ -114,20 +132,29 @@ bool_statement 	: bool_expresion
 				| NEG bool_statement
 				;
 
-bool_expresion	: BOOL NEQ BOOL
-				| BOOL EQ BOOL
-				| BOOL LESS BOOL
-				| BOOL LESSOREQ BOOL
-				| BOOL GREATER BOOL
-				| BOOL GREATEROREQ BOOL
+bool_expresion	: item NEQ item
+				| item EQ item
+				| item LESS item
+				| item LESSOREQ item
+				| item GREATER item
+				| item GREATEROREQ item
 				| BOOL
 				;
+
+item            : ID
+				| NR
+				| FLOAT
+				| STRING
+				| CHAR
+				| BOOL	
+				;
+				
 
 while  			: WHILE '(' bool_statement ')' '{' function_block '}'
 				;
 
-for				: FOR '(' definition ';' bool_statement ';' ')' '{' function_block '}'
-				| FOR '(' assignment ';' bool_statement ';' ')' '{' function_block '}'
+for				: FOR '(' definition ';' bool_statement ';' assignment ')' '{' function_block '}'
+				| FOR '(' assignment ';' bool_statement ';' assignment ')' '{' function_block '}'
 				;
 
 if 				: IF '(' bool_statement ')' '{' function_block '}'
