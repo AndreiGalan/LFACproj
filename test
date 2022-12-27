@@ -1,64 +1,9 @@
-char m;
-const int l = -1;
+const int i = 50;
+const int j = 70;
 
-class DEFAULT
-{
-    public char m;
-    private const int l = -1;
-
-    public fn pp()
-    {
-        i = 1;
-    }
-
-    protected fn lol(int i, int b) -> int
-    {
-        i = -1;
-
-        return i;
-    }
-}
-
-fn pp()
-{
-    i = 1;
-
-    if(true!=2)
-    {
-        i = 1;
-    }
-    else{
-        i = 2;
-    }
-
-
-    for(int i = 0; i<=3; i+=2+2)
-    {
-        l = 2;
-    }
-    
-    while(i!=2)
-    {
-        l=3;
-    }
-    i++;
-    j--;
-    i=i+1;
-    i+=(2+3);
-}
-
-fn lol(int i, int b) -> int
-{
-    i = -1;
-
-    return i;
-}
+int lol;
 
 main
 {
-    str = "salut";
-    i = -1;
-    const int ll = -1;
-    ll = 5;
-    k = 1;
+    int i = 5;
 }

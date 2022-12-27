@@ -2,13 +2,18 @@
 #include <stdio.h>
 #include "y.tab.h"
 %}
-%option noyywrap
 
+
+%option noyywrap
 
 %%
 "main" {return MAIN;}
 "const" {return CONST;}
-"int"|"float"|"char"|"string"|"bool" { return TYPE;}
+"int" {return INT; }
+"float" {return FLOAT; }
+"char" {return CHAR; }
+"string" {return STRING; }
+"bool" { return BOOL; }
 
 "fn" {return FUNCTION;}
 "->" {return ARROW;}
@@ -49,17 +54,19 @@
 
 "=" {return ASSIGN;}
 
-"true"|"false" { return BOOL; }
-[a-zA-Z_][a-zA-Z0-9_]* { return ID; }
+"true"|"false" { yylval.valBOOL = (strcmp(yytext, "true") == 0); return BOOL_CONST; }
+[a-zA-Z_][a-zA-Z0-9_]* { yylval.valSTRING = strdup(yytext); return ID; }
 
 
--?(([1-9][0-9]*)|0) { return NR; }
--?[0-9]+\.?[0-9]+ { return FLOAT; }
-\".*\" { return STRING; }
-\'.\' { return CHAR; }
+-?(([1-9][0-9]*)|0) { yylval.valINT = atoi(yytext); return INT_CONST; }
+-?[0-9]+\.?[0-9]+ { yylval.valFLOAT = atof(yytext); return FLOAT_CONST; }
+\".*\" { yylval.valSTRING = strdup(yytext); return STRING_CONST; }
+\'.\' { yylval.valCHAR = yytext[0]; return CHAR_CONST; }
 
 [ \t] ;
 \n {yylineno++;}
 . {return yytext[0];}
+
+
 
 %%
