@@ -7,6 +7,7 @@ extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
 
+struct Stack* stack_scope;
 
 struct Variable* global_variables[100];
 int curr_pos = 0;
@@ -14,6 +15,7 @@ int curr_pos = 0;
 
 void free_global(){
 	for(int i = 0; i < curr_pos; ++i){
+		//printf("%d\n", global_variables[i]->value.valINT);
 		free(global_variables[i]);
 	}
 }
@@ -67,19 +69,16 @@ void free_global(){
 
 
 %%
-program			: prog_parts MAIN_BLOC 	{
-											printf("program corect sintactic\n");
-											free_global();
-										}
+program			: prog_parts {stack_scope = createStack();} MAIN_BLOC 	{
+																			printf("program corect sintactic\n");
+																			free_global();
+																			freeStack(stack_scope);
+																		}
 				;
 
 prog_parts 		: prog_parts function
 				| prog_parts declaration ';' 	{
 													global_variables[curr_pos++] = $2;
-											
-													printf("%s\n", global_variables[curr_pos-1]->name);
-													printf("%d\n", global_variables[curr_pos-1]->value.valBOOL);
-													fflush(stdout);
 												}
 				| prog_parts definition ';'		{
 													global_variables[curr_pos++] = $2;
@@ -88,7 +87,7 @@ prog_parts 		: prog_parts function
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n");} '{' function_block '}'	{
+MAIN_BLOC 		: MAIN {printf("main\n"); push(stack_scope);} '{' function_block '}'	{
 																		
 																	}
      			;
@@ -140,6 +139,13 @@ params_call     : operations ',' params_call
 /*DECLARATION DEFINITION*/
 declaration 	: 
 				  TYPE ID 								{
+															for(int i=0;i<curr_pos;i++)
+																if(strcmp(global_variables[i]->name,$2)==0){
+																	free_global();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is already declared!!!\n");
+																	exit(1);
+																}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
 															strcpy($$->name, $2);
 															$$->type = $1;
@@ -151,9 +157,18 @@ declaration 	:
 
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
+															for(int i=0;i<curr_pos;i++)
+																if(strcmp(global_variables[i]->name,$3)==0){
+																	free_global();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is already declared!!!\n");
+																	exit(1);
+																}
+																	
 															if($2 != $5->type){
 																free_global();
 																printf("Error at line: %d\n", yylineno);
+																printf("The types are incompatible!!!\n");
         														exit(1);
 															}
 
@@ -180,9 +195,17 @@ definition  	:
 															}
 														}
 				| TYPE ID ASSIGN operations				{
+															for(int i=0;i<curr_pos;i++)
+																if(strcmp(global_variables[i]->name,$2)==0){
+																	free_global();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is already declared!!!\n");
+																	exit(1);
+																}
 															if($1 != $4->type){
 																free_global();
 																printf("eroare la linia:%d\n", yylineno);
+																printf("The types are incompatible!!!\n");
         														exit(1);
 															}
 
@@ -546,6 +569,30 @@ operations 		: item {$$ = $1;}
 														for(int i = 1; i < $3->value.valINT; ++i)
 															strcat($$->value.valSTRING, $1->value.valSTRING);
 
+													}
+													else{
+														compatible = 0;
+													}
+
+													if(strcmp($1->name, "@const") == 0)
+														free($1);
+													if(strcmp($3->name, "@const") == 0)
+														free($3);
+
+													if(compatible == 0){
+														free_global();
+														printf("Error at line: %d\n", yylineno);
+														printf("These types can't be added!!!\n");
+        												exit(1);
+													}
+												}
+				| operations REMAIDER operations {
+													int compatible = 1;
+													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													strcpy($$->name, "@const");
+													if(($1->type == INT && $3->type == INT)){
+														$$->type = INT;
+														$$->value.valINT = $1->value.valINT % $3->value.valINT;
 													}
 													else{
 														compatible = 0;
