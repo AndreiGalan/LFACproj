@@ -1,9 +1,8 @@
-const int i = 50;
-const int j = 70;
+const string i = "sal ut" * 3;
 
-int lol;
+
 
 main
 {
-    int i = 5;
+
 }

@@ -60,8 +60,8 @@
 
 -?(([1-9][0-9]*)|0) { yylval.valINT = atoi(yytext); return INT_CONST; }
 -?[0-9]+\.?[0-9]+ { yylval.valFLOAT = atof(yytext); return FLOAT_CONST; }
-\".*\" { yylval.valSTRING = strdup(yytext); return STRING_CONST; }
-\'.\' { yylval.valCHAR = yytext[0]; return CHAR_CONST; }
+\"[^\"]*\" { yylval.valSTRING = strdup(yytext); return STRING_CONST; }
+\'.\' { yylval.valCHAR = yytext[1]; return CHAR_CONST; }
 
 [ \t] ;
 \n {yylineno++;}

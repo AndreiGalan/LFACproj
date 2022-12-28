@@ -66,16 +66,16 @@ program			: prog_parts MAIN_BLOC {printf("program corect sintactic\n");
 prog_parts 		: prog_parts function
 				| prog_parts declaration ';' 	{
 													global_variables[curr_pos++] = $2;
-													printf("%d\n", curr_pos);
+											
 													printf("%s\n", global_variables[curr_pos-1]->name);
-													printf("%d\n", global_variables[curr_pos-1]->type);
+													printf("%s\n", global_variables[curr_pos-1]->value.valSTRING);
 													fflush(stdout);
 												}
 				| prog_parts definition ';'		{
 													global_variables[curr_pos++] = $2;
-													printf("%d\n", curr_pos);
+									
 													printf("%s\n", global_variables[curr_pos-1]->name);
-													printf("%d\n", global_variables[curr_pos-1]->type);
+													printf("%s\n", global_variables[curr_pos-1]->value.valSTRING);
 													fflush(stdout);
 												}
 				| prog_parts class
@@ -140,18 +140,18 @@ declaration 	: TYPE ID 								{
 				| TYPE ID '[' INT_CONST ']' 
 				; 
 
-definition  	: CONST TYPE ID ASSIGN constant_value 	{
+definition  	: CONST TYPE ID ASSIGN operations 		{
 															$$ = $5;
 															strcpy($$->name, $3);
 															$$->is_const = 1;
 														}
-				| TYPE ID ASSIGN constant_value			{
+				| TYPE ID ASSIGN operations				{
 															$$ = $4;
 															strcpy($$->name, $2);
 															$$->is_const = 0;
 														}
-				| CONST TYPE ID '[' INT_CONST ']' ASSIGN '{' constant_values '}'
-				| TYPE ID '[' INT_CONST ']' ASSIGN '{' constant_values '}'
+				| CONST TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
+				| TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
 				;
 
 TYPE 			: INT {$$ = INT;}
@@ -181,7 +181,9 @@ constant_value	: INT_CONST 	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
 									strcpy($$->name, "@const");
 									$$->type = STRING;
-									strcpy($$->value.valSTRING, $1);
+									$$->value.valSTRING = (char*)malloc((strlen($1) - 1) * sizeof(char));
+									$1[strlen($1) - 1] = '\0';
+									strcpy($$->value.valSTRING, $1 + 1);
 								}
 				| CHAR_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -219,22 +221,148 @@ assignment		: ID ASSIGN item
 
 operations 		: item {$$ = $1;}
 				| operations PLUS operations 	{
+													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													strcpy($$->name, "@const");
-													if($1->type == INT && $3->type == INT ){
+													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
 														$$->type = INT;
-														$$->value.valINT = $1->value.valINT + $3->value.valINT;
+														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) + (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
 													}
-													if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
 														$$->type = FLOAT;
 														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) + (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+													}
+													else if($1->type == STRING && $3->type == STRING){
+														$$->type = STRING;
+														int size = (strlen($1->value.valSTRING) + strlen($3->value.valSTRING) + 1) * sizeof(char);
+														$$->value.valSTRING = (char*)malloc(size);
+														strcpy($$->value.valSTRING, $1->value.valSTRING);
+														strcat($$->value.valSTRING, $3->value.valSTRING);
+													}
+													else if($1->type == STRING && $3->type == CHAR){
+														$$->type = STRING;
+														int size = (strlen($1->value.valSTRING) + 2) * sizeof(char);
+														$$->value.valSTRING = (char*)malloc(size);
+														strcpy($$->value.valSTRING, $1->value.valSTRING);
+														$$->value.valSTRING[strlen($$->value.valSTRING) + 1] = '\0';
+														$$->value.valSTRING[strlen($$->value.valSTRING)] = $3->value.valCHAR;
+
+													}
+													else if($1->type == CHAR && $3->type == STRING){
+														$$->type = STRING;
+														int size = (strlen($3->value.valSTRING) + 2) * sizeof(char);
+														$$->value.valSTRING = (char*)malloc(size);
+														$$->value.valSTRING[1] = '\0';
+														$$->value.valSTRING[0] = $1->value.valCHAR;
+														strcat($$->value.valSTRING, $3->value.valSTRING);
+													}
+													else{
+														compatible = 0;
+													}
+
+													if(strcmp($1->name, "@const") == 0)
+														free($1);
+													if(strcmp($3->name, "@const") == 0)
+														free($3);
+
+													if(compatible == 0){
+														perror("These types can't be added!!!\n");
+        												exit(1);
 													}
 
 												}
 				| operations MINUS operations
+												{
+													int compatible = 1;
+													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													strcpy($$->name, "@const");
+													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
+														$$->type = INT;
+														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) - (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
+													}
+													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+														$$->type = FLOAT;
+														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) - (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+													}
+													else{
+														compatible = 0;
+													}
+
+													if(strcmp($1->name, "@const") == 0)
+														free($1);
+													if(strcmp($3->name, "@const") == 0)
+														free($3);
+
+													if(compatible == 0){
+														perror("These types can't be added!!!\n");
+        												exit(1);
+													}
+												}
 				| operations SLASH operations
-				| operations MULT operations
-				| '(' operations ')'
+												{
+													int compatible = 1;
+													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													strcpy($$->name, "@const");
+													if(($1->type == INT && $3->type == INT)){
+														$$->type = INT;
+														$$->value.valINT = ($1->value.valINT / $3->value.valINT);
+													}
+													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+														$$->type = FLOAT;
+														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) / (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+													}
+													else{
+														compatible = 0;
+													}
+
+													if(strcmp($1->name, "@const") == 0)
+														free($1);
+													if(strcmp($3->name, "@const") == 0)
+														free($3);
+
+													if(compatible == 0){
+														perror("These types can't be added!!!\n");
+        												exit(1);
+													}
+												}
+				| operations MULT operations	{
+													int compatible = 1;
+													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													strcpy($$->name, "@const");
+													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
+														$$->type = INT;
+														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) * (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
+													}
+													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+														$$->type = FLOAT;
+														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) * (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+													}
+													
+													else if($1->type == STRING && $3->type == INT){
+														$$->type = STRING;
+														int size = ((strlen($1->value.valSTRING) * $3->value.valINT) + 1) * sizeof(char);
+														$$->value.valSTRING = (char*)malloc(size);
+														strcpy($$->value.valSTRING, $1->value.valSTRING);
+														
+														for(int i = 1; i < $3->value.valINT; ++i)
+															strcat($$->value.valSTRING, $1->value.valSTRING);
+
+													}
+													else{
+														compatible = 0;
+													}
+
+													if(strcmp($1->name, "@const") == 0)
+														free($1);
+													if(strcmp($3->name, "@const") == 0)
+														free($3);
+
+													if(compatible == 0){
+														perror("These types can't be added!!!\n");
+        												exit(1);
+													}
+												}
+				| '(' operations ')'			{ $$ = $2;}
 				;
 
 /*Control flow statements*/
