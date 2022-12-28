@@ -5,8 +5,15 @@ int j = 9;
 
 main
 {
-    int m = 8;
-    int l = 10 - 100;
 
-    m--;
+    int m = 1;
+    int k = 9;
+
+    i = m*100;
+
+    while( i > 0){
+        m = 0;
+        i = 92321;
+    }
+
 }

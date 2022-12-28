@@ -8,14 +8,29 @@ extern char* yytext;
 extern int yylineno;
 
 struct Stack* stack_scope[100];
-int curr_pos = 0;
+int curr_pos = -1;
 
 struct Node* GlobalVar = NULL;
 
-void free_stack_global(){
+void free_stack_global()
+{
 	delete_list(&GlobalVar);
 	for(int i = 0; i < curr_pos; ++i)
 		freeStack(stack_scope[i]);
+}
+
+struct Variable* general_lookup(const char* name)
+{
+	struct Variable* var = lookup_element(GlobalVar, name);
+
+	if(curr_pos >= 0 ){
+		for(int i = 0; i <= stack_scope[curr_pos]->top; ++i){
+			if(var != NULL)
+				return var;
+			var = lookup_element(stack_scope[curr_pos]->data[i], name);
+		}
+	}
+	return var;
 }
 
 %}
@@ -98,7 +113,7 @@ prog_parts 		: prog_parts function
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n"); stack_scope[curr_pos] = createStack(); push(stack_scope[curr_pos]);} '{' function_block '}'	
+MAIN_BLOC 		: MAIN {printf("main\n"); stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);} '{' function_block '}'	
      			;
 
 /* CLASS */
@@ -148,7 +163,7 @@ params_call     : operations ',' params_call
 /*DECLARATION DEFINITION*/
 declaration 	: 
 				  TYPE ID 								{
-															if(lookup_element(GlobalVar, $2) != NULL){
+															if(general_lookup($2) != NULL){
 																free_stack_global();
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
@@ -165,7 +180,7 @@ declaration 	:
 
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
-															if(lookup_element(GlobalVar, $3) != NULL){
+															if(general_lookup($3) != NULL){
 																free_stack_global();
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
@@ -201,7 +216,7 @@ definition  	:
 															}
 														}
 				| TYPE ID ASSIGN operations				{
-															if(lookup_element(GlobalVar, $2) != NULL){
+															if(general_lookup($2) != NULL){
 																free_stack_global();
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
@@ -299,8 +314,7 @@ shortcuts		: PLUSA 	{$$ = PLUSA;}
 
 assignment		: 
 				  ID ASSIGN item 			{
-												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
-												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
+												struct Variable* v = general_lookup($1);
 												
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
@@ -335,8 +349,7 @@ assignment		:
 													free($3);
 											}
 				| ID ASSIGN operations		{
-												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
-												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
+												struct Variable* v = general_lookup($1);
 
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
@@ -373,8 +386,7 @@ assignment		:
 				| ID shortcuts item			
 				| ID shortcuts operations
 				| ID INCREMENT				{
-												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
-												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
+												struct Variable* v = general_lookup($1);
 
 												if(v == NULL){
 													free_stack_global();
@@ -399,8 +411,7 @@ assignment		:
 
 											}
 				| ID DECREMENT				{
-												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
-												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
+												struct Variable* v = general_lookup($1);
 
 												if(v == NULL){
 													free_stack_global();
@@ -750,13 +761,16 @@ bool_expresion	:
 				;
 
 item            : ID {
-						$$ = lookup_element(GlobalVar, $1);
+						$$ = general_lookup($1);
 					}
 				| constant_value
 				;
 				
 
-while  			: WHILE '(' bool_statement ')' '{' function_block '}'
+while  			: WHILE '(' bool_statement ')' {push(stack_scope[curr_pos]);} '{' function_block '}' { 	
+																										struct Node* n = pop(stack_scope[curr_pos]);
+																										delete_list(&n);
+																									 }
 				;
 
 for				: FOR '(' definition ';' bool_statement ';' assignment ')' '{' function_block '}'
