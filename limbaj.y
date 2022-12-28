@@ -1,13 +1,22 @@
 %{
 #include <stdio.h>
 #include "includes.h"
+#include "stack.h"
 #include <string.h>
 extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
 
+
 struct Variable* global_variables[100];
 int curr_pos = 0;
+
+
+void free_global(){
+	for(int i = 0; i < curr_pos; ++i){
+		free(global_variables[i]);
+	}
+}
 
 %}
 
@@ -60,10 +69,7 @@ int curr_pos = 0;
 %%
 program			: prog_parts MAIN_BLOC 	{
 											printf("program corect sintactic\n");
-											for(int i = 0; i < curr_pos; ++i){
-												printf("%d\n", global_variables[i]->value.valINT);
-												free(global_variables[i]);
-											}
+											free_global();
 										}
 				;
 
@@ -77,16 +83,14 @@ prog_parts 		: prog_parts function
 												}
 				| prog_parts definition ';'		{
 													global_variables[curr_pos++] = $2;
-									
-													printf("%s\n", global_variables[curr_pos-1]->name);
-													printf("%d\n", global_variables[curr_pos-1]->value.valBOOL);
-													fflush(stdout);
 												}
 				| prog_parts class
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n");} '{' function_block '}'
+MAIN_BLOC 		: MAIN {printf("main\n");} '{' function_block '}'	{
+																		
+																	}
      			;
 
 /* CLASS */
@@ -148,7 +152,8 @@ declaration 	:
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
 															if($2 != $5->type){
-																printf("eroare la linia:%d\n", yylineno);
+																free_global();
+																printf("Error at line: %d\n", yylineno);
         														exit(1);
 															}
 
@@ -176,6 +181,7 @@ definition  	:
 														}
 				| TYPE ID ASSIGN operations				{
 															if($1 != $4->type){
+																free_global();
 																printf("eroare la linia:%d\n", yylineno);
         														exit(1);
 															}
@@ -273,6 +279,7 @@ assignment		:
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -281,6 +288,8 @@ assignment		:
 												if(v->type != $3->type){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
+
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -307,6 +316,8 @@ assignment		:
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
+
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -315,6 +326,8 @@ assignment		:
 												if(v->type != $3->type){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
+
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -341,12 +354,14 @@ assignment		:
 														v = global_variables[i];
 
 												if(v == NULL){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
 												}
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot increment this variable!!!\n");
 													exit(1);
@@ -367,12 +382,14 @@ assignment		:
 														v = global_variables[i];
 
 												if(v == NULL){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
 												}
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot decrement this variable!!!\n");
 													exit(1);
@@ -442,6 +459,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
+														free_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -471,6 +489,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
+														free_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -499,6 +518,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
+														free_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -537,6 +557,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
+														free_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -555,6 +576,7 @@ bool_statement 	: bool_expresion						{$$ = $1;}
 bool_expresion	: 
 				  item NEQ item 			{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -575,6 +597,7 @@ bool_expresion	:
 											}
 				| item EQ item				{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -596,6 +619,7 @@ bool_expresion	:
 
 				| item LESS item			{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -616,6 +640,7 @@ bool_expresion	:
 											}
 				| item LESSOREQ item		{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -636,6 +661,7 @@ bool_expresion	:
 											}
 				| item GREATER item			{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -656,6 +682,7 @@ bool_expresion	:
 											}
 				| item GREATEROREQ item		{
 												if($1->type != $3->type){
+													free_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);

@@ -11,7 +11,7 @@ typedef union Value{
 
 
 typedef struct Variable{
-	char name[50];
+	char name[100];
 	int type;
 	int is_const;
 	union Value value;
