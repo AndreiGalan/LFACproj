@@ -7,7 +7,7 @@
 
 struct Stack
 {
-  struct Variable *data[MAX_SIZE];
+  struct Node* data[MAX_SIZE];
   int top;
 };
 
@@ -25,10 +25,10 @@ int isEmpty(struct Stack *stack)
 
 void push(struct Stack *stack)
 {
-  stack->data[++stack->top] = (struct Variable *)malloc(sizeof(struct Variable) * MAX_SIZE);
+  stack->data[++stack->top] = NULL;
 }
 
-struct Variable *pop(struct Stack *stack)
+struct Node *pop(struct Stack *stack)
 {
   if (isEmpty(stack))
     return NULL;
@@ -36,19 +36,20 @@ struct Variable *pop(struct Stack *stack)
   return stack->data[stack->top--];
 }
 
-struct Variable *peek(struct Stack *stack)
+struct Node** peek(struct Stack *stack)
 {
   if (isEmpty(stack))
     return NULL;
 
-  return stack->data[stack->top];
+  return &stack->data[stack->top];
 }
 
 void freeStack(struct Stack *stack)
 {
-  struct Stack* s = pop(stack);
+  struct Node* s = pop(stack);
   while(!stack){
     s = pop(stack);
+    delete_list(&s);
     free(s);
   }
 

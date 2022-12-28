@@ -1,9 +1,12 @@
 int i = 7;
 
-int j = 13 % i;
+int j = 9;
 
 
 main
 {
+    int m = 8;
+    int l = 10 - 100;
 
+    m--;
 }

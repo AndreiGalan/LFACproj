@@ -7,17 +7,15 @@ extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
 
-struct Stack* stack_scope;
-
-struct Variable* global_variables[100];
+struct Stack* stack_scope[100];
 int curr_pos = 0;
 
+struct Node* GlobalVar = NULL;
 
-void free_global(){
-	for(int i = 0; i < curr_pos; ++i){
-		//printf("%d\n", global_variables[i]->value.valINT);
-		free(global_variables[i]);
-	}
+void free_stack_global(){
+	delete_list(&GlobalVar);
+	for(int i = 0; i < curr_pos; ++i)
+		freeStack(stack_scope[i]);
 }
 
 %}
@@ -69,27 +67,38 @@ void free_global(){
 
 
 %%
-program			: prog_parts {stack_scope = createStack();} MAIN_BLOC 	{
+program			: prog_parts MAIN_BLOC 	{
 																			printf("program corect sintactic\n");
-																			free_global();
-																			freeStack(stack_scope);
+																			struct Node* current = GlobalVar;
+																			while (current != NULL) {
+																				printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
+																				current = current->next;
+																			}
+																			printf("\n");
+
+																			current = *peek(stack_scope[curr_pos]);
+																			while (current != NULL) {
+																				printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
+																				current = current->next;
+																			}
+																			printf("\n");
+
+																			free_stack_global();
 																		}
 				;
 
 prog_parts 		: prog_parts function
 				| prog_parts declaration ';' 	{
-													global_variables[curr_pos++] = $2;
+													add_element(&GlobalVar, $2);
 												}
 				| prog_parts definition ';'		{
-													global_variables[curr_pos++] = $2;
+													add_element(&GlobalVar, $2);
 												}
 				| prog_parts class
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n"); push(stack_scope);} '{' function_block '}'	{
-																		
-																	}
+MAIN_BLOC 		: MAIN {printf("main\n"); stack_scope[curr_pos] = createStack(); push(stack_scope[curr_pos]);} '{' function_block '}'	
      			;
 
 /* CLASS */
@@ -114,8 +123,8 @@ params 			: declaration ',' params
        			;
 
 function_block 	: function_block assignments 
-				| function_block declaration ';'
-				| function_block definition ';'
+				| function_block declaration { add_element(peek(stack_scope[curr_pos]), $2); }';'
+				| function_block definition { add_element(peek(stack_scope[curr_pos]), $2); }';'
 				| function_block function_call ';'
 				| function_block while
 				| function_block for
@@ -139,13 +148,12 @@ params_call     : operations ',' params_call
 /*DECLARATION DEFINITION*/
 declaration 	: 
 				  TYPE ID 								{
-															for(int i=0;i<curr_pos;i++)
-																if(strcmp(global_variables[i]->name,$2)==0){
-																	free_global();
-																	printf("Error at line: %d\n", yylineno);
-																	printf("The variable is already declared!!!\n");
-																	exit(1);
-																}
+															if(lookup_element(GlobalVar, $2) != NULL){
+																free_stack_global();
+																printf("Error at line: %d\n", yylineno);
+																printf("The variable is already declared!!!\n");
+																exit(1);
+															}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
 															strcpy($$->name, $2);
 															$$->type = $1;
@@ -157,16 +165,14 @@ declaration 	:
 
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
-															for(int i=0;i<curr_pos;i++)
-																if(strcmp(global_variables[i]->name,$3)==0){
-																	free_global();
-																	printf("Error at line: %d\n", yylineno);
-																	printf("The variable is already declared!!!\n");
-																	exit(1);
-																}
+															if(lookup_element(GlobalVar, $3) != NULL){
+																free_stack_global();
+																printf("Error at line: %d\n", yylineno);
+																printf("The variable is already declared!!!\n");
+																exit(1);
+															}
 																	
 															if($2 != $5->type){
-																free_global();
 																printf("Error at line: %d\n", yylineno);
 																printf("The types are incompatible!!!\n");
         														exit(1);
@@ -195,15 +201,14 @@ definition  	:
 															}
 														}
 				| TYPE ID ASSIGN operations				{
-															for(int i=0;i<curr_pos;i++)
-																if(strcmp(global_variables[i]->name,$2)==0){
-																	free_global();
-																	printf("Error at line: %d\n", yylineno);
-																	printf("The variable is already declared!!!\n");
-																	exit(1);
-																}
+															if(lookup_element(GlobalVar, $2) != NULL){
+																free_stack_global();
+																printf("Error at line: %d\n", yylineno);
+																printf("The variable is already declared!!!\n");
+																exit(1);
+															}
 															if($1 != $4->type){
-																free_global();
+					
 																printf("eroare la linia:%d\n", yylineno);
 																printf("The types are incompatible!!!\n");
         														exit(1);
@@ -294,15 +299,14 @@ shortcuts		: PLUSA 	{$$ = PLUSA;}
 
 assignment		: 
 				  ID ASSIGN item 			{
-												struct Variable* v = NULL;
-												for(int i=0;i<curr_pos;i++)
-													if(strcmp(global_variables[i]->name,$1)==0)
-														v = global_variables[i];
-
+												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
+												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
+												
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
-													free_global();
+		
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -312,7 +316,7 @@ assignment		:
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
 
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -331,16 +335,14 @@ assignment		:
 													free($3);
 											}
 				| ID ASSIGN operations		{
-												struct Variable* v = NULL;
-												for(int i=0;i<curr_pos;i++)
-													if(strcmp(global_variables[i]->name,$1)==0)
-														v = global_variables[i];
+												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
+												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
 
 												if(v == NULL || v->is_const == 1){
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
 
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -350,7 +352,7 @@ assignment		:
 													if(strcmp($3->name, "@const") == 0)
 														free($3);
 
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -371,20 +373,18 @@ assignment		:
 				| ID shortcuts item			
 				| ID shortcuts operations
 				| ID INCREMENT				{
-												struct Variable* v = NULL;
-												for(int i=0;i<curr_pos;i++)
-													if(strcmp(global_variables[i]->name,$1)==0)
-														v = global_variables[i];
+												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
+												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
 
 												if(v == NULL){
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
 												}
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot increment this variable!!!\n");
 													exit(1);
@@ -399,20 +399,18 @@ assignment		:
 
 											}
 				| ID DECREMENT				{
-												struct Variable* v = NULL;
-												for(int i=0;i<curr_pos;i++)
-													if(strcmp(global_variables[i]->name,$1)==0)
-														v = global_variables[i];
+												struct Variable* v = lookup_element(*peek(stack_scope[curr_pos]), $1);
+												v = (v == NULL) ? lookup_element(GlobalVar, $1) : v;
 
 												if(v == NULL){
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
 												}
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
-													free_global();
+													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot decrement this variable!!!\n");
 													exit(1);
@@ -482,7 +480,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
-														free_global();
+			
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -512,7 +510,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
-														free_global();
+			
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -541,7 +539,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
-														free_global();
+			
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -580,7 +578,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
-														free_global();
+			
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -604,7 +602,7 @@ operations 		: item {$$ = $1;}
 														free($3);
 
 													if(compatible == 0){
-														free_global();
+														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -623,7 +621,7 @@ bool_statement 	: bool_expresion						{$$ = $1;}
 bool_expresion	: 
 				  item NEQ item 			{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -644,7 +642,7 @@ bool_expresion	:
 											}
 				| item EQ item				{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -666,7 +664,7 @@ bool_expresion	:
 
 				| item LESS item			{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -687,7 +685,7 @@ bool_expresion	:
 											}
 				| item LESSOREQ item		{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -708,7 +706,7 @@ bool_expresion	:
 											}
 				| item GREATER item			{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -729,7 +727,7 @@ bool_expresion	:
 											}
 				| item GREATEROREQ item		{
 												if($1->type != $3->type){
-													free_global();
+		
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -752,9 +750,7 @@ bool_expresion	:
 				;
 
 item            : ID {
-						for(int i=0;i<curr_pos;i++)
-							if(strcmp(global_variables[i]->name,$$)==0)
-								$$ = global_variables[i];
+						$$ = lookup_element(GlobalVar, $1);
 					}
 				| constant_value
 				;
@@ -774,10 +770,10 @@ if 				: IF '(' bool_statement ')' '{' function_block '}'
 
 
 int yyerror(char * s){
-printf("eroare: %s la linia:%d\n",s,yylineno);
+	printf("eroare: %s la linia:%d\n",s,yylineno);
 }
 
 int main(int argc, char** argv){
-yyin=fopen(argv[1],"r");
-yyparse();
+	yyin=fopen(argv[1],"r");
+	yyparse();
 } 
