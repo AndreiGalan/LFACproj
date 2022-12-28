@@ -1,8 +1,8 @@
-const string i = "sal ut" * 3;
+int i = 10;
 
 
 
 main
 {
-
+    i=2;
 }
