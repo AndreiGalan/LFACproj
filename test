@@ -8,13 +8,15 @@ int j = 9;
 
  */
 
+//comment
+
 main
 {
 
     int m = 1;
     int k = 9;
 
-    i = ml*100;
+    i = m*100;
 
     while( i > 0){
         m = 0;
