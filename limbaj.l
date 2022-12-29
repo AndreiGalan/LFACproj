@@ -63,6 +63,18 @@
 \"[^\"]*\" { yylval.valSTRING = strdup(yytext); return STRING_CONST; }
 \'.\' { yylval.valCHAR = yytext[1]; return CHAR_CONST; }
 
+
+"//".* {}
+"/"\*(.*(\n)*)*\*"/"    {
+                            char* p = yytext;
+
+                            while(*p != '\0'){
+                                if(*p == '\n')
+                                    yylineno++;
+                                ++p;
+                            }
+                        }
+
 [ \t] ;
 \n {yylineno++;}
 . {return yytext[0];}

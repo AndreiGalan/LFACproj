@@ -762,6 +762,12 @@ bool_expresion	:
 
 item            : ID {
 						$$ = general_lookup($1);
+						if($$ == NULL){
+							free_stack_global();
+							printf("Error at line: %d\n", yylineno);
+							printf("The variable is not declared!!!\n");
+							exit(1);
+						}
 					}
 				| constant_value
 				;
