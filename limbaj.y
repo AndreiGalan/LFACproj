@@ -12,6 +12,8 @@ int curr_pos = -1;
 
 struct Node* GlobalVar = NULL;
 
+void free_const(struct Variable* v);
+
 void free_stack_global()
 {
 	delete_list(&GlobalVar);
@@ -60,7 +62,7 @@ struct Variable* general_lookup(const char* name)
 %token <valINT> INT_CONST
 %token <valFLOAT> FLOAT_CONST
 %token <valCHAR> CHAR_CONST
-%token <valSTRING> STRING_CONST ID
+%token <valSTRING> STRING_CONST ID TYPEOF
 %token <valBOOL> BOOL_CONST
 
 %type <variable> declaration definition constant_value operations item
@@ -83,23 +85,23 @@ struct Variable* general_lookup(const char* name)
 
 %%
 program			: prog_parts MAIN_BLOC 	{
-																			printf("program corect sintactic\n");
-																			struct Node* current = GlobalVar;
-																			while (current != NULL) {
-																				printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
-																				current = current->next;
-																			}
-																			printf("\n");
+											printf("program corect sintactic\n");
+											struct Node* current = GlobalVar;
+											while (current != NULL) {
+												printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
+												current = current->next;
+											}
+											printf("\n");
 
-																			current = *peek(stack_scope[curr_pos]);
-																			while (current != NULL) {
-																				printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
-																				current = current->next;
-																			}
-																			printf("\n");
+											current = *peek(stack_scope[curr_pos]);
+											while (current != NULL) {
+												printf("%s, %d\n", current->variable->name, current->variable->value.valINT);
+												current = current->next;
+											}
+											printf("\n");
 
-																			free_stack_global();
-																		}
+											free_stack_global();
+										}
 				;
 
 prog_parts 		: prog_parts function
@@ -170,7 +172,7 @@ declaration 	:
 																exit(1);
 															}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
-															strcpy($$->name, $2);
+															$$->name = $2;
 															$$->type = $1;
 															$$->is_const = 0;
 															$$->value.valINT = 0;
@@ -182,12 +184,15 @@ definition  	:
 				  CONST TYPE ID ASSIGN operations 		{
 															if(general_lookup($3) != NULL){
 																free_stack_global();
+																free_const($5);
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
 																exit(1);
 															}
 																	
 															if($2 != $5->type){
+																free_stack_global();
+																free_const($5);
 																printf("Error at line: %d\n", yylineno);
 																printf("The types are incompatible!!!\n");
         														exit(1);
@@ -195,12 +200,12 @@ definition  	:
 
 															if(strcmp($5->name, "@const") == 0){
 																$$ = $5;
-																strcpy($$->name, $3);
+																$$->name = $3;
 																$$->is_const = 1;
 															}
 															else{
 																$$ = (struct Variable*)malloc(sizeof(struct Variable));
-																strcpy($$->name, $3);
+																$$->name = $3;
 																$$->type = $2;
 																$$->is_const = 1;
 
@@ -212,18 +217,21 @@ definition  	:
 																	$$->value.valINT = 0;
 																	memcpy(&$$->value, &$5->value, sizeof($5->value)); 
 																}
-
 															}
+															
+															free_const($5);
 														}
 				| TYPE ID ASSIGN operations				{
 															if(general_lookup($2) != NULL){
 																free_stack_global();
+																free_const($4);
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
 																exit(1);
 															}
 															if($1 != $4->type){
-					
+																free_stack_global();
+																free_const($4);
 																printf("eroare la linia:%d\n", yylineno);
 																printf("The types are incompatible!!!\n");
         														exit(1);
@@ -231,12 +239,12 @@ definition  	:
 
 															if(strcmp($4->name, "@const") == 0){
 																$$ = $4;
-																strcpy($$->name, $2);
+																$$->name = $2;
 																$$->is_const = 0;
 															}
 															else{
 																$$ = (struct Variable*)malloc(sizeof(struct Variable));
-																strcpy($$->name, $2);
+																$$->name = $2;
 																$$->type = $1;
 																$$->is_const = 0;
 
@@ -248,8 +256,9 @@ definition  	:
 																	$$->value.valINT = 0;
 																	memcpy(&$$->value, &$4->value, sizeof($4->value)); 
 																}
-
 															}
+															
+															free_const($4);
 														}
 				| CONST TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
 				| TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
@@ -269,18 +278,21 @@ constant_values : constant_value
 constant_value	: 
 				  INT_CONST 	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
+									$$->name = (char*)malloc(strlen("@const") + 1);
 									strcpy($$->name, "@const");
 									$$->type = INT;
 									$$->value.valINT = $1;
 								}
 				| FLOAT_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
+									$$->name = (char*)malloc(strlen("@const") + 1);
 									strcpy($$->name, "@const");
 									$$->type = FLOAT;
 									$$->value.valFLOAT = $1;
 								}
 				| STRING_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
+									$$->name = (char*)malloc(strlen("@const") + 1);
 									strcpy($$->name, "@const");
 									$$->type = STRING;
 									$$->value.valSTRING = (char*)malloc((strlen($1) - 1) * sizeof(char));
@@ -289,12 +301,14 @@ constant_value	:
 								}
 				| CHAR_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
+									$$->name = (char*)malloc(strlen("@const") + 1);
 									strcpy($$->name, "@const");
 									$$->type = CHAR;
 									$$->value.valCHAR = $1;
 								}
 				| BOOL_CONST 	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
+									$$->name = (char*)malloc(strlen("@const") + 1);
 									strcpy($$->name, "@const");
 									$$->type = BOOL;
 									$$->value.valBOOL = $1;
@@ -313,13 +327,11 @@ shortcuts		: PLUSA 	{$$ = PLUSA;}
 				;
 
 assignment		: 
-				  ID ASSIGN item 			{
+				  ID ASSIGN operations		{
 												struct Variable* v = general_lookup($1);
-												
+
 												if(v == NULL || v->is_const == 1){
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
-		
+													free_const($3);
 													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
@@ -327,9 +339,7 @@ assignment		:
 												}
 
 												if(v->type != $3->type){
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
-
+													free_const($3);
 													free_stack_global();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
@@ -345,45 +355,8 @@ assignment		:
 													memcpy(&v->value, &$3->value, sizeof($3->value)); 
 												}
 
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
-											}
-				| ID ASSIGN operations		{
-												struct Variable* v = general_lookup($1);
-
-												if(v == NULL || v->is_const == 1){
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
-
-													free_stack_global();
-													printf("Error at line: %d\n", yylineno);
-													printf("The variable is not declared or is const!!!\n");
-													exit(1);
-												}
-
-												if(v->type != $3->type){
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
-
-													free_stack_global();
-													printf("Error at line: %d\n", yylineno);
-													printf("The types are not compatible!!!\n");
-													exit(1);
-												}
-											
-												if(v->type == STRING){
-													v->value.valSTRING = (char*)malloc((strlen($3->value.valSTRING) + 1) * sizeof(char));
-													strcpy(v->value.valSTRING, $3->value.valSTRING);
-												}
-												else{
-													v->value.valINT = 0;
-													memcpy(&v->value, &$3->value, sizeof($3->value)); 
-												}
-
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
-											}
-				| ID shortcuts item			
+												free_const($3);
+											}	
 				| ID shortcuts operations
 				| ID INCREMENT				{
 												struct Variable* v = general_lookup($1);
@@ -438,9 +411,10 @@ assignment		:
 				;
 
 
-operations 		: item {$$ = $1;}
+operations 		: item 							{$$ = $1;}
 				| bool_statement				{
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
 													$$->type = BOOL;
 													$$->value.valBOOL = $1;
@@ -448,14 +422,15 @@ operations 		: item {$$ = $1;}
 				| operations PLUS operations 	{
 													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
+													if($1->type == INT && $3->type == INT){
 														$$->type = INT;
-														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) + (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
+														$$->value.valINT = $1->value.valINT + $3->value.valINT;
 													}
-													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+													else if($1->type == FLOAT && $3->type == FLOAT){
 														$$->type = FLOAT;
-														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) + (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+														$$->value.valFLOAT = $1->value.valFLOAT + $3->value.valFLOAT;
 													}
 													else if($1->type == STRING && $3->type == STRING){
 														$$->type = STRING;
@@ -464,140 +439,132 @@ operations 		: item {$$ = $1;}
 														strcpy($$->value.valSTRING, $1->value.valSTRING);
 														strcat($$->value.valSTRING, $3->value.valSTRING);
 													}
-													else if($1->type == STRING && $3->type == CHAR){
-														$$->type = STRING;
-														int size = (strlen($1->value.valSTRING) + 2) * sizeof(char);
-														$$->value.valSTRING = (char*)malloc(size);
-														strcpy($$->value.valSTRING, $1->value.valSTRING);
-														$$->value.valSTRING[strlen($$->value.valSTRING) + 1] = '\0';
-														$$->value.valSTRING[strlen($$->value.valSTRING)] = $3->value.valCHAR;
+													// else if($1->type == STRING && $3->type == CHAR){
+													// 	$$->type = STRING;
+													// 	int size = (strlen($1->value.valSTRING) + 2) * sizeof(char);
+													// 	$$->value.valSTRING = (char*)malloc(size);
+													// 	strcpy($$->value.valSTRING, $1->value.valSTRING);
+													// 	$$->value.valSTRING[strlen($$->value.valSTRING) + 1] = '\0';
+													// 	$$->value.valSTRING[strlen($$->value.valSTRING)] = $3->value.valCHAR;
 
-													}
-													else if($1->type == CHAR && $3->type == STRING){
-														$$->type = STRING;
-														int size = (strlen($3->value.valSTRING) + 2) * sizeof(char);
-														$$->value.valSTRING = (char*)malloc(size);
-														$$->value.valSTRING[1] = '\0';
-														$$->value.valSTRING[0] = $1->value.valCHAR;
-														strcat($$->value.valSTRING, $3->value.valSTRING);
-													}
+													// }
+													// else if($1->type == CHAR && $3->type == STRING){
+													// 	$$->type = STRING;
+													// 	int size = (strlen($3->value.valSTRING) + 2) * sizeof(char);
+													// 	$$->value.valSTRING = (char*)malloc(size);
+													// 	$$->value.valSTRING[1] = '\0';
+													// 	$$->value.valSTRING[0] = $1->value.valCHAR;
+													// 	strcat($$->value.valSTRING, $3->value.valSTRING);
+													// }
 													else{
 														compatible = 0;
 													}
 
-													if(strcmp($1->name, "@const") == 0)
-														free($1);
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
+													free_const($1);
+													free_const($3);
 
 													if(compatible == 0){
-			
+														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
 													}
 
 												}
-				| operations MINUS operations
-												{
+				| operations MINUS operations	{
 													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
+													if($1->type == INT && $3->type == INT){
 														$$->type = INT;
-														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) - (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
+														$$->value.valINT = $1->value.valINT - $3->value.valINT;
 													}
-													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+													else if($1->type == FLOAT && $3->type == FLOAT){
 														$$->type = FLOAT;
-														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) - (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+														$$->value.valFLOAT = $1->value.valFLOAT - $3->value.valFLOAT;
 													}
 													else{
 														compatible = 0;
 													}
 
-													if(strcmp($1->name, "@const") == 0)
-														free($1);
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
+													free_const($1);
+													free_const($3);
 
 													if(compatible == 0){
-			
+														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
-														printf("These types can't be added!!!\n");
+														printf("These types can't be subtracted!!!\n");
         												exit(1);
 													}
 												}
-				| operations SLASH operations
-												{
+				| operations SLASH operations	{
 													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
 													if(($1->type == INT && $3->type == INT)){
 														$$->type = INT;
 														$$->value.valINT = ($1->value.valINT / $3->value.valINT);
 													}
-													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+													else if($1->type == FLOAT && $3->type == FLOAT){
 														$$->type = FLOAT;
-														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) / (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+														$$->value.valFLOAT = $1->value.valFLOAT / $3->value.valFLOAT;
 													}
 													else{
 														compatible = 0;
 													}
 
-													if(strcmp($1->name, "@const") == 0)
-														free($1);
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
+													free_const($1);
+													free_const($3);
 
 													if(compatible == 0){
-			
+														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
-														printf("These types can't be added!!!\n");
+														printf("These types can't be divided!!!\n");
         												exit(1);
 													}
 												}
 				| operations MULT operations	{
 													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if(($1->type == INT && $3->type == INT) || ($1->type == CHAR && $3->type == INT) || ($1->type == INT && $3->type == CHAR)){
+													if($1->type == INT && $3->type == INT){
 														$$->type = INT;
-														$$->value.valINT = (($1->type == INT)? $1->value.valINT : $1->value.valCHAR) * (($3->type == INT)? $3->value.valINT : $3->value.valCHAR);
+														$$->value.valINT = $1->value.valINT * $3->value.valINT;
 													}
-													else if(($1->type == FLOAT && $3->type == FLOAT) || ($1->type == FLOAT && $3->type == INT) || ($1->type == INT && $3->type == FLOAT)){
+													else if($1->type == FLOAT && $3->type == FLOAT){
 														$$->type = FLOAT;
-														$$->value.valFLOAT = (($1->type == INT)? $1->value.valINT : $1->value.valFLOAT) * (($3->type == INT)? $3->value.valINT : $3->value.valFLOAT);
+														$$->value.valFLOAT = $1->value.valFLOAT * $3->value.valFLOAT;
 													}
-													
-													else if($1->type == STRING && $3->type == INT){
-														$$->type = STRING;
-														int size = ((strlen($1->value.valSTRING) * $3->value.valINT) + 1) * sizeof(char);
-														$$->value.valSTRING = (char*)malloc(size);
-														strcpy($$->value.valSTRING, $1->value.valSTRING);
+													// else if($1->type == STRING && $3->type == INT){
+													// 	$$->type = STRING;
+													// 	int size = ((strlen($1->value.valSTRING) * $3->value.valINT) + 1) * sizeof(char);
+													// 	$$->value.valSTRING = (char*)malloc(size);
+													// 	strcpy($$->value.valSTRING, $1->value.valSTRING);
 														
-														for(int i = 1; i < $3->value.valINT; ++i)
-															strcat($$->value.valSTRING, $1->value.valSTRING);
-
-													}
+													// 	for(int i = 1; i < $3->value.valINT; ++i)
+													// 		strcat($$->value.valSTRING, $1->value.valSTRING);
+													// }
 													else{
 														compatible = 0;
 													}
 
-													if(strcmp($1->name, "@const") == 0)
-														free($1);
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
+													free_const($1);
+													free_const($3);
 
 													if(compatible == 0){
-			
+														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
-														printf("These types can't be added!!!\n");
+														printf("These types can't be multiplyed!!!\n");
         												exit(1);
 													}
 												}
 				| operations REMAIDER operations {
 													int compatible = 1;
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
 													if(($1->type == INT && $3->type == INT)){
 														$$->type = INT;
@@ -607,15 +574,13 @@ operations 		: item {$$ = $1;}
 														compatible = 0;
 													}
 
-													if(strcmp($1->name, "@const") == 0)
-														free($1);
-													if(strcmp($3->name, "@const") == 0)
-														free($3);
+													free_const($1);
+													free_const($3);
 
 													if(compatible == 0){
 														free_stack_global();
 														printf("Error at line: %d\n", yylineno);
-														printf("These types can't be added!!!\n");
+														printf("These types can't be divided!!!\n");
         												exit(1);
 													}
 												}
@@ -624,15 +589,30 @@ operations 		: item {$$ = $1;}
 
 /*Control flow statements*/
 bool_statement 	: bool_expresion						{$$ = $1;}
+				| '(' bool_statement ')'				{$$ = $2;}
 				| bool_statement AND bool_statement		{$$ = $1 && $3;}
 				| bool_statement OR bool_statement		{$$ = $1 || $3;}
 				| NEG bool_statement					{$$ = !$2;}
 				;
 
 bool_expresion	: 
-				  item NEQ item 			{
+				  item						{
+												if($1->type != BOOL){
+													free_stack_global();
+													free_const($1);
+													printf("Error at line: %d\n", yylineno);
+													printf("Thise variables is not of type bool!!!\n");
+													exit(1);
+												}
+
+												$$ = $1->value.valBOOL;
+												free_const($1);
+											}
+				| item NEQ item 			{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -646,14 +626,14 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR != $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL != $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
 				| item EQ item				{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -667,15 +647,15 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR == $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL == $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
 
 				| item LESS item			{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -689,14 +669,14 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR < $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL < $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
 				| item LESSOREQ item		{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -710,14 +690,14 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR <= $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL <= $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
 				| item GREATER item			{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -731,14 +711,14 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR > $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL > $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
 				| item GREATEROREQ item		{
 												if($1->type != $3->type){
-		
+													free_stack_global();
+													free_const($1);
+													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("These types can't be compared!!!\n");
 													exit(1);
@@ -752,16 +732,15 @@ bool_expresion	:
 														: ($1->type == CHAR) ? $1->value.valCHAR >= $3->value.valCHAR
 														: ($1->type == BOOL) ? $1->value.valBOOL >= $3->value.valBOOL : 0;
 
-												if(strcmp($1->name, "@const") == 0)
-													free($1);
-												if(strcmp($3->name, "@const") == 0)
-													free($3);
+												free_const($1);
+												free_const($3);
 											}
-				| BOOL_CONST				{ $$ = $1;}
 				;
 
-item            : ID {
+item            : 
+				ID {
 						$$ = general_lookup($1);
+						free($1);
 						if($$ == NULL){
 							free_stack_global();
 							printf("Error at line: %d\n", yylineno);
@@ -788,6 +767,30 @@ if 				: IF '(' bool_statement ')' '{' function_block '}'
 				;
 %%
 
+void free_const(struct Variable* v){
+	if(strcmp(v->name, "@const") == 0){
+		if(v->type == STRING)
+			free(v->value.valSTRING);
+		free(v->name);
+		free(v);
+	}
+}
+
+void delete_list(struct Node **head)
+{
+	struct Node *current = *head;
+	while (current != NULL)
+	{
+		struct Node *temp = current;
+		current = current->next;
+		if(temp->variable->type == STRING)
+			free(temp->variable->value.valSTRING);
+		free(temp->variable->name);
+		free(temp->variable);
+		free(temp);
+	}
+	*head = NULL;
+}
 
 int yyerror(char * s){
 	printf("eroare: %s la linia:%d\n",s,yylineno);

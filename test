@@ -1,6 +1,8 @@
-int i = 7;
+int i = 1000;
+int j = i;
 
-int j = 9;
+
+string k = "salut";
 
 /* Acesta este un
 
@@ -12,13 +14,15 @@ int j = 9;
 
 main
 {
+    bool sda = true && false;
+    int m = 10;
+    k = "l";
 
-    int m = 1;
-    int k = 9;
+    k = "lol";
 
     i = m*100;
 
-    while( i > 0){
+    while( sda){
         m = 0;
         i = 92321;
     }
