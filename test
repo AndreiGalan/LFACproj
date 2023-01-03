@@ -12,6 +12,11 @@ string k = "salut";
 
 //comment
 
+fn pp(int a, int b)
+{
+    int ll = 0;
+}
+
 main
 {
     bool sda = true && false;

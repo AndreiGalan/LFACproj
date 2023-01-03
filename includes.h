@@ -1,6 +1,14 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
+typedef struct Function
+{
+	char* name;
+	int return_type;
+	int* parameters;
+	int nr_parameters;
+} Function;
+
 typedef union Value
 {
 	int valINT;

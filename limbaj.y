@@ -7,6 +7,33 @@ extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
 
+
+struct Function* functions[100];
+int nr_functions = 0;
+
+int* params;
+int nr_params = 0;
+
+
+int find_function_name(char* name)
+{
+	for(int i = 0; i < nr_functions; ++i)
+		if(strcmp(functions[i]->name, name) == 0)
+			return 0;
+
+	return -1;
+}
+
+void free_functions()
+{
+	for(int i = 0; i < nr_functions; ++i){
+		free(functions[i]->name);
+		free(functions[i]->parameters);
+		free(functions[i]);
+	}
+}
+
+
 struct Stack* stack_scope[100];
 int curr_pos = -1;
 
@@ -101,6 +128,7 @@ program			: prog_parts MAIN_BLOC 	{
 											printf("\n");
 
 											free_stack_global();
+											free_functions();
 										}
 				;
 
@@ -130,12 +158,71 @@ class_block		: class_block CLASS_SPEC function
 
 /*FUNCTION*/
 
-function		: FUNCTION ID '(' params ')' ARROW TYPE '{' function_block rtn '}'
-        		| FUNCTION ID '(' params ')' '{' function_block '}'
+function		: FUNCTION ID 
+							{	
+								if(find_function_name($2) == 0){
+									free_stack_global();
+									free_functions();
+									printf("Error at line: %d\n", yylineno);
+									printf("The function is already delcared!!!\n");
+									exit(1);
+								}
+								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
+								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
+								strcpy(functions[nr_functions]->name, $2);
+								functions[nr_functions]->nr_parameters = 0;
+							}
+							'(' params ')' ARROW TYPE '{' function_block rtn '}'	{	
+																						functions[nr_functions]->return_type = $8;
+																						++nr_functions;
+																					}
+        		| FUNCTION ID 
+							{	
+								if(find_function_name($2) == 0){
+									free_stack_global();
+									free_functions();
+									printf("Error at line: %d\n", yylineno);
+									printf("The function is already delcared!!!\n");
+									exit(1);
+								}
+								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
+								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
+								strcpy(functions[nr_functions]->name, $2);
+								functions[nr_functions]->nr_parameters = 0;
+								functions[nr_functions]->return_type = -1;
+							}
+							'(' params ')' '{' function_block '}' {++nr_functions;}
         		;
 
-params 			: declaration ',' params
-       			| declaration
+params 			: 
+				  declaration ',' params	{
+												++functions[nr_functions]->nr_parameters; 
+												int* temp = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
+
+												if(functions[nr_functions]->nr_parameters > 1)
+													memcpy(temp, functions[nr_functions]->parameters, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
+
+												temp[functions[nr_functions]->nr_parameters - 1] = $1->type;
+												free_const($1);
+
+												free(functions[nr_functions]->parameters);
+
+												functions[nr_functions]->parameters = temp;
+											}
+       			| declaration 				{
+												++functions[nr_functions]->nr_parameters; 
+												int* temp = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
+
+												if(functions[nr_functions]->nr_parameters > 1)
+													memcpy(temp, functions[nr_functions]->parameters, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
+
+												temp[functions[nr_functions]->nr_parameters - 1] = $1->type;
+												free_const($1);
+
+												free(functions[nr_functions]->parameters);
+
+												functions[nr_functions]->parameters = temp;
+											}
 				|
        			;
 
@@ -152,13 +239,70 @@ function_block 	: function_block assignments
 rtn 			: RETURN ID ';'
 				| RETURN item ';'
 				;
-function_call   : FUNCTION ID '(' params_call ')' 
+function_call   : FUNCTION ID 	{
+									if(find_function_name($2) == -1){
+										free_stack_global();
+										free_functions();
+										printf("Error at line: %d\n", yylineno);
+										printf("The function has not been declared!!!\n");
+										exit(1);
+									}
+
+									
+								} 
+								'(' params_call ')'	{
+														for(int i = 0; i < nr_functions; ++i){
+															if(strcmp(functions[i]->name, $2) == 0){
+																if(functions[i]->nr_parameters != nr_params){
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The function has not been declared!!!\n");
+																	exit(1);
+																}
+
+																for(int j = 0; j < functions[i]->nr_parameters; ++j){
+																	if(functions[i]->parameters[j] != params[j]){
+																		free_stack_global();
+																		free_functions();
+																		printf("Error at line: %d\n", yylineno);
+																		printf("The function has not been declared!!!\n");
+																		exit(1);
+																	}
+																}
+															}
+														}
+
+														free(params);
+														nr_params = 0;
+													}
 				;
 
 
 
 params_call     : operations ',' params_call 
-				| operations 
+											{
+												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
+												if(nr_params > 0)
+													memcpy(temp, params, sizeof(int) * nr_params);
+
+												temp[nr_params++] = $1->type;
+												free_const($1);
+
+												free(params);
+												params = temp;
+											}
+				| operations 				{
+												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
+												if(nr_params > 0)
+													memcpy(temp, params, sizeof(int) * nr_params);
+
+												temp[nr_params++] = $1->type;
+												free_const($1);
+
+												free(params);
+												params = temp;
+											}
 				|
 				;
 
@@ -167,6 +311,7 @@ declaration 	:
 				  TYPE ID 								{
 															if(general_lookup($2) != NULL){
 																free_stack_global();
+																free_functions();
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
 																exit(1);
@@ -184,6 +329,7 @@ definition  	:
 				  CONST TYPE ID ASSIGN operations 		{
 															if(general_lookup($3) != NULL){
 																free_stack_global();
+																free_functions();
 																free_const($5);
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
@@ -192,6 +338,7 @@ definition  	:
 																	
 															if($2 != $5->type){
 																free_stack_global();
+																free_functions();
 																free_const($5);
 																printf("Error at line: %d\n", yylineno);
 																printf("The types are incompatible!!!\n");
@@ -224,6 +371,7 @@ definition  	:
 				| TYPE ID ASSIGN operations				{
 															if(general_lookup($2) != NULL){
 																free_stack_global();
+																free_functions();
 																free_const($4);
 																printf("Error at line: %d\n", yylineno);
 																printf("The variable is already declared!!!\n");
@@ -231,6 +379,7 @@ definition  	:
 															}
 															if($1 != $4->type){
 																free_stack_global();
+																free_functions();
 																free_const($4);
 																printf("eroare la linia:%d\n", yylineno);
 																printf("The types are incompatible!!!\n");
@@ -333,6 +482,7 @@ assignment		:
 												if(v == NULL || v->is_const == 1){
 													free_const($3);
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -341,6 +491,7 @@ assignment		:
 												if(v->type != $3->type){
 													free_const($3);
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -363,6 +514,7 @@ assignment		:
 
 												if(v == NULL){
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
@@ -370,6 +522,7 @@ assignment		:
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot increment this variable!!!\n");
 													exit(1);
@@ -388,6 +541,7 @@ assignment		:
 
 												if(v == NULL){
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
@@ -395,6 +549,7 @@ assignment		:
 
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
 													free_stack_global();
+													free_functions();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot decrement this variable!!!\n");
 													exit(1);
@@ -465,6 +620,7 @@ operations 		: item 							{$$ = $1;}
 
 													if(compatible == 0){
 														free_stack_global();
+														free_functions();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -493,6 +649,7 @@ operations 		: item 							{$$ = $1;}
 
 													if(compatible == 0){
 														free_stack_global();
+														free_functions();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be subtracted!!!\n");
         												exit(1);
@@ -520,6 +677,7 @@ operations 		: item 							{$$ = $1;}
 
 													if(compatible == 0){
 														free_stack_global();
+														free_functions();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be divided!!!\n");
         												exit(1);
@@ -556,6 +714,7 @@ operations 		: item 							{$$ = $1;}
 
 													if(compatible == 0){
 														free_stack_global();
+														free_functions();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be multiplyed!!!\n");
         												exit(1);
@@ -579,12 +738,14 @@ operations 		: item 							{$$ = $1;}
 
 													if(compatible == 0){
 														free_stack_global();
+														free_functions();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be divided!!!\n");
         												exit(1);
 													}
 												}
 				| '(' operations ')'			{ $$ = $2;}
+				| function_call
 				;
 
 /*Control flow statements*/
@@ -599,6 +760,7 @@ bool_expresion	:
 				  item						{
 												if($1->type != BOOL){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													printf("Error at line: %d\n", yylineno);
 													printf("Thise variables is not of type bool!!!\n");
@@ -611,6 +773,7 @@ bool_expresion	:
 				| item NEQ item 			{
 												if($1->type != $3->type){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -632,6 +795,7 @@ bool_expresion	:
 				| item EQ item				{
 												if($1->type != $3->type){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -653,7 +817,9 @@ bool_expresion	:
 
 				| item LESS item			{
 												if($1->type != $3->type){
+													
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -675,6 +841,7 @@ bool_expresion	:
 				| item LESSOREQ item		{
 												if($1->type != $3->type){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -696,6 +863,7 @@ bool_expresion	:
 				| item GREATER item			{
 												if($1->type != $3->type){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -717,6 +885,7 @@ bool_expresion	:
 				| item GREATEROREQ item		{
 												if($1->type != $3->type){
 													free_stack_global();
+													free_functions();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -743,6 +912,7 @@ item            :
 						free($1);
 						if($$ == NULL){
 							free_stack_global();
+							free_functions();
 							printf("Error at line: %d\n", yylineno);
 							printf("The variable is not declared!!!\n");
 							exit(1);
