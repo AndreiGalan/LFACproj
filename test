@@ -12,9 +12,10 @@ string k = "salut";
 
 //comment
 
-fn pp(int a, int b)
+void pp(int a,int b)
 {
-    int ll = 0;
+    int jj=2;
+    int kk=3;
 }
 
 main

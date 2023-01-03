@@ -17,6 +17,7 @@
 "bool" { return BOOL; }
 
 "fn" {return FUNCTION;}
+"void" {return VOID;}
 "->" {return ARROW;}
 "return" {return RETURN;}
 

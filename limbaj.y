@@ -78,7 +78,7 @@ struct Variable* general_lookup(const char* name)
 
 %token 	MAIN CONST
 		INT FLOAT STRING CHAR BOOL
-		FUNCTION ARROW RETURN 
+		FUNCTION ARROW RETURN VOID
 		IF ELSE WHILE FOR
 		CLASS CLASS_SPEC MEMBER_ACCESS
 		NEQ EQ LESS LESSOREQ GREATER GREATEROREQ
@@ -167,16 +167,17 @@ function		: FUNCTION ID
 									printf("The function is already delcared!!!\n");
 									exit(1);
 								}
+								stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);
 								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
 								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
 								strcpy(functions[nr_functions]->name, $2);
 								functions[nr_functions]->nr_parameters = 0;
 							}
-							'(' params ')' ARROW TYPE '{' function_block rtn '}'	{	
+							'(' params ')' ARROW TYPE '{'function_block rtn '}'	{	
 																						functions[nr_functions]->return_type = $8;
 																						++nr_functions;
 																					}
-        		| FUNCTION ID 
+        		| VOID ID 
 							{	
 								if(find_function_name($2) == 0){
 									free_stack_global();
@@ -185,6 +186,7 @@ function		: FUNCTION ID
 									printf("The function is already delcared!!!\n");
 									exit(1);
 								}
+								stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);
 								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
 								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
 								strcpy(functions[nr_functions]->name, $2);
@@ -228,7 +230,7 @@ params 			:
 
 function_block 	: function_block assignments 
 				| function_block declaration { add_element(peek(stack_scope[curr_pos]), $2); }';'
-				| function_block definition { add_element(peek(stack_scope[curr_pos]), $2); }';'
+				| function_block definition { printf("aici\n"); add_element(peek(stack_scope[curr_pos]), $2); printf("aici\n");}';'
 				| function_block function_call ';'
 				| function_block while
 				| function_block for
@@ -327,6 +329,7 @@ declaration 	:
 
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
+															//printf("aici\n");
 															if(general_lookup($3) != NULL){
 																free_stack_global();
 																free_functions();
@@ -408,6 +411,7 @@ definition  	:
 															}
 															
 															free_const($4);
+															printf("%s\n",$2);
 														}
 				| CONST TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
 				| TYPE ID '[' INT_CONST ']' ASSIGN '{' operations '}'
