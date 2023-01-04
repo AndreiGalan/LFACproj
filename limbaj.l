@@ -2,85 +2,49 @@
 #include <stdio.h>
 #include "y.tab.h"
 %}
-
-
 %option noyywrap
 
+
 %%
-"main" {return MAIN;}
-"TypeOf" {return TYPEOF;}
+"int"|"float"|"char"|"string"|"bool" { return TYPE;}
 "const" {return CONST;}
-"int" {return INT; }
-"float" {return FLOAT; }
-"char" {return CHAR; }
-"string" {return STRING; }
-"bool" { return BOOL; }
-
-"fn" {return FUNCTION;}
-"void" {return VOID;}
-"->" {return ARROW;}
-"return" {return RETURN;}
-
+"begin:" {return BEGIN_BLOC;}
+"end;" {return END_BLOC;}
 "if" {return IF;}
 "else" {return ELSE;}
 "while" {return WHILE;}
 "for" {return FOR;}
-
 "class" {return CLASS;}
 "private"|"protected"|"public" {return CLASS_SPEC;}
-"." {return MEMBER_ACCESS;}
 
 
-"!=" {return NEQ;}
-"==" {return EQ;}
 "<" {return LESS;}
 "<=" {return LESSOREQ;}
 ">" {return GREATER;}
 ">=" {return GREATEROREQ;}
-
-"++" {return INCREMENT;}
-"--" {return DECREMENT;}
 "+" {return PLUS;}
-"+=" {return PLUSA;}
 "-" {return MINUS;}
-"-=" {return MINUSA;}
 "*" {return MULT;}
-"*=" {return MULTA;}
 "/" {return SLASH;}
-"/=" {return SLASHA;}
-"%" {return REMAIDER; }
-
 "&&" {return AND;}
 "||" {return OR;}
 "!" {return NEG;}
 
-"=" {return ASSIGN;}
+":=" {return ASSIGN;}
 
-"true"|"false" { yylval.valBOOL = (strcmp(yytext, "true") == 0); return BOOL_CONST; }
-[a-zA-Z_][a-zA-Z0-9_]* { yylval.valSTRING = strdup(yytext); return ID; }
+[a-zA-Z_][a-zA-Z0-9_]* { return ID; }
+-?(([1-9][0-9]*)|0) { return NR; }
+-?[0-9]+\.?[0-9]+ { return FLOAT; }
 
-
--?(([1-9][0-9]*)|0) { yylval.valINT = atoi(yytext); return INT_CONST; }
--?[0-9]+\.?[0-9]+ { yylval.valFLOAT = atof(yytext); return FLOAT_CONST; }
-\"[^\"]*\" { yylval.valSTRING = strdup(yytext); return STRING_CONST; }
-\'.\' { yylval.valCHAR = yytext[1]; return CHAR_CONST; }
-
-
-"//".* {}
-"/"\*(.*(\n)*)*\*"/"    {
-                            char* p = yytext;
-
-                            while(*p != '\0'){
-                                if(*p == '\n')
-                                    yylineno++;
-                                ++p;
-                            }
-                        }
+\".*\" { return STRING; }
+\'.\' { return SINGLECHAR; }
+"true" { return BOOL_TRUE; }
+"false" { return BOOL_FALSE; } 
+"{" {return LB;}
+"}" {return RB;}
 
 [ \t] ;
 \n {yylineno++;}
 . {return yytext[0];}
-
-
 
 %%

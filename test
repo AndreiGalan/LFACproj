@@ -1,36 +1,11 @@
-int i = 1000;
-int j = i;
+string str;
+const int i[5];
 
 
-string k = "salut";
-
-/* Acesta este un
-
-
-
- */
-
-//comment
-
-void pp(int a,int b)
-{
-    int jj=2;
-    int kk=3;
-}
-
-main
-{
-    bool sda = true && false;
-    int m = 10;
-    k = "l";
-
-    k = "lol";
-
-    i = m*100;
-
-    while( sda){
-        m = 0;
-        i = 92321;
-    }
-
-}
+begin:
+    str := "salut";
+    i := -1;
+    int ll;
+    ll := 5;
+    k := true;
+end;
