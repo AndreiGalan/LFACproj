@@ -1,0 +1,8 @@
+*
+!.gitignore
+!limbaj.l
+!limbaj.y
+!Makefile
+!test
+!includes.h
+!stack.h
