@@ -1,0 +1,4 @@
+Function name: ll, Return type: void, Parameters: Parameter name: b, Parameter type: int. 
+Function name: l1, Return type: void, Parameters: Parameter name: b, Parameter type: int. 
+Function name: pp, Return type: int, Parameters: Parameter name: a, Parameter type: int. Parameter name: b, Parameter type: string. 
+Function name: p1, Return type: int, Parameters: Parameter name: a, Parameter type: int. Parameter name: b, Parameter type: string. 
