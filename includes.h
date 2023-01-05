@@ -11,6 +11,7 @@ typedef struct Function
 	int* size;
 } Function;
 
+
 typedef union Value
 {
 	int valINT;
@@ -28,6 +29,16 @@ typedef struct Variable
 	int size;
 	union Value value;
 } Variable;
+
+
+typedef struct Class
+{
+	char* name;
+	struct Variable* variables[10];
+	int nr_variables;
+	struct Function* functions[10];
+	int nr_functions;
+} Class;
 
 typedef struct Node
 {

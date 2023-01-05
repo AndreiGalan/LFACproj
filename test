@@ -2,57 +2,47 @@ int i = 1000;
 int j = i;
 
 
+
 string k = "salut";
 
-/* Acesta este un
+class CLASS
+{
+    int i = 0;
+    int j = 0;
 
+    pr ll(int b){
+        int a = 0;
+    }
 
+}
 
- */
-
-//comment
 
 pr ll(int b){
     int a = 0;
+
 }
+
 pr l1(int b[100],float h[20]){
     int a = 0;
+
+    b[a] = b[a];
+    
 }
 
 
 fn pp(int a, string b) -> int
 {
-    int o = 1;
     return 1;
 }
 
 fn p1(int a, string b) -> int
 {
-    return 1;
+    return a;
 }
 
 
 
 main
 {
-    bool sda = true && false;
-    int m = 10;
-    k = "l";
-    int jj = 0;
-
-    k = "lol";
-
-    i = m*100;
-
-    int gggg[100] = {};
-    float aaaa[20];
-    while( sda){
-        m = 0;
-        i = 92321;
-        int adssf = 10;
-    }
-
-    int dfdsf;
-    dfdsf=gggg[1];
-    l1(gggg,aaaa);
+    CLASS p;
 }

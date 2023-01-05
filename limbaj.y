@@ -12,6 +12,9 @@ int array_type = 0;
 struct Function* functions[100];
 int nr_functions = 0;
 
+struct Class* classes[20];
+int nr_classes = 0;
+
 int* params;
 char** params_name; 
 int nr_params = 0;
@@ -19,6 +22,14 @@ int* is_array;
 
 void write_to_file(Variable* var);
 void write_function_to_file(Function* func);
+
+int find_class_name(char* name){
+	for(int i = 0; i < nr_classes; ++i)
+		if(strcmp(classes[i]->name, name) == 0)
+			return i;
+
+	return -1;
+}
 
 int find_function_name(char* name)
 {
@@ -83,11 +94,11 @@ struct Variable* general_lookup(const char* name)
 
 %token 	MAIN CONST
 		INT FLOAT STRING CHAR BOOL
-		PROCEDURE FUNCTION ARROW RETURN VOID
+		PROCEDURE FUNCTION ARROW RETURN
 		IF ELSE WHILE FOR
-		CLASS CLASS_SPEC MEMBER_ACCESS
+		CLASS MEMBER_ACCESS
 		NEQ EQ LESS LESSOREQ GREATER GREATEROREQ
-		INCREMENT DECREMENT PLUS MINUS MULT SLASH PLUSA MINUSA MULTA SLASHA REMAIDER
+		INCREMENT DECREMENT PLUS MINUS MULT SLASH REMAIDER
 		AND OR NEG
 		ASSIGN 
 
@@ -98,12 +109,12 @@ struct Variable* general_lookup(const char* name)
 %token <valBOOL> BOOL_CONST
 
 %type <variable> declaration definition constant_value operations item rtn function_call
-%type <valINT> TYPE shortcuts
+%type <valINT> TYPE
 %type <valBOOL> bool_expresion bool_statement
 
 %start program
 
-%right ASSIGN MULTA SLASHA PLUSA MINUSA
+%right ASSIGN
 %left OR
 %left AND
 %left EQ NEQ
@@ -136,10 +147,26 @@ program			: 	{
 
 prog_parts 		: prog_parts function
 				| prog_parts declaration ';' 	{
+													if(general_lookup($2->name) != NULL){
+														add_element(&GlobalVar, $2);
+														free_stack_global();
+														free_functions();
+														printf("Error at line: %d\n", yylineno);
+														printf("The variable is already declared!!!\n");
+														exit(1);
+													}
 													add_element(&GlobalVar, $2);
 													write_to_file($2);
 												}
 				| prog_parts definition ';'		{
+													if(general_lookup($2->name) != NULL){
+														add_element(&GlobalVar, $2);
+														free_stack_global();
+														free_functions();
+														printf("Error at line: %d\n", yylineno);
+														printf("The variable is already declared!!!\n");
+														exit(1);
+													}
 													add_element(&GlobalVar, $2);
 													write_to_file($2);
 												}
@@ -151,12 +178,59 @@ MAIN_BLOC 		: MAIN {printf("main\n"); stack_scope[++curr_pos] = createStack(); p
      			;
 
 /* CLASS */
-class			: CLASS ID '{' class_block '}'
+class			: CLASS ID 	{
+								if(find_class_name($2) != -1){
+									free_stack_global();
+									free_functions();
+									printf("Error at line: %d\n", yylineno);
+									printf("The class is already delcared!!!\n");
+									exit(1);
+								}
+								classes[nr_classes] = (struct Class*)malloc(sizeof(struct Class));
+								classes[nr_classes]->name = (char*)malloc(sizeof(char*)*(strlen($2)+1));
+								strcpy(classes[nr_classes]->name, $2);
+								classes[nr_classes]->nr_variables = 0;
+								classes[nr_classes]->nr_functions = 0;
+							} '{' class_block '}' {++nr_classes;}
 				;
 
-class_block		: class_block CLASS_SPEC function
-				| class_block CLASS_SPEC declaration ';'
-				| class_block CLASS_SPEC definition ';'
+class_block		: class_block function 			{
+													--nr_functions;
+													for(int i = 0; i < classes[nr_classes]->nr_functions; ++i){
+														if(strcmp(classes[nr_classes]->functions[i]->name, functions[nr_functions]->name) == 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The method is already delcared!!!\n");
+															exit(1);
+														}
+													}
+													classes[nr_classes]->functions[classes[nr_classes]->nr_functions++] = functions[nr_functions];
+												}
+				| class_block declaration ';'	{
+													for(int i = 0; i < classes[nr_classes]->nr_variables; ++i){
+														if(strcmp(classes[nr_classes]->variables[i]->name, $2->name) == 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The variable is already delcared!!!\n");
+															exit(1);
+														}
+													}
+													classes[nr_classes]->variables[classes[nr_classes]->nr_variables++] = $2;
+												}
+				| class_block definition ';'	{
+													for(int i = 0; i < classes[nr_classes]->nr_variables; ++i){
+														if(strcmp(classes[nr_classes]->variables[i]->name, $2->name) == 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The variable is already delcared!!!\n");
+															exit(1);
+														}
+													}
+													classes[nr_classes]->variables[classes[nr_classes]->nr_variables++] = $2;
+												}
 				| 
 				;
 
@@ -215,6 +289,14 @@ function		: PROCEDURE ID
 params 			: 
 				  declaration ',' params	
 				  							{
+												if(general_lookup($1) != NULL){
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is already declared!!!\n");
+													exit(1);
+												}
+
 												++functions[nr_functions]->nr_parameters; 
 												int* temp1 = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
 
@@ -222,7 +304,6 @@ params 			:
 													memcpy(temp1, functions[nr_functions]->parameters, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
 
 												temp1[functions[nr_functions]->nr_parameters - 1] = $1->type;
-												free_const($1);
 
 												free(functions[nr_functions]->parameters);
 
@@ -236,8 +317,6 @@ params 			:
 
 												temp2[functions[nr_functions]->nr_parameters - 1] = (char*)malloc((strlen($1->name) + 1) * sizeof(char));
 												strcpy(temp2[functions[nr_functions]->nr_parameters - 1], $1->name);
-												printf("%s\n", $1->name);
-												free_const($1);
 
 												free(functions[nr_functions]->parameters_name);
 
@@ -249,13 +328,22 @@ params 			:
 													memcpy(temp3, functions[nr_functions]->size, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
 
 												temp3[functions[nr_functions]->nr_parameters - 1] = $1->size;
-												free_const($1);
 
 												free(functions[nr_functions]->size);
 
 												functions[nr_functions]->size = temp3;
+		
+												add_element(peek(stack_scope[curr_pos]), $1); write_to_file($1);
 											}
        			| declaration 				{
+												if(general_lookup($1) != NULL){
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is already declared!!!\n");
+													exit(1);
+												}
+
 												++functions[nr_functions]->nr_parameters; 
 												int* temp1 = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
 
@@ -263,7 +351,6 @@ params 			:
 													memcpy(temp1, functions[nr_functions]->parameters, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
 
 												temp1[functions[nr_functions]->nr_parameters - 1] = $1->type;
-												free_const($1);
 
 												free(functions[nr_functions]->parameters);
 
@@ -277,31 +364,52 @@ params 			:
 
 												temp2[functions[nr_functions]->nr_parameters - 1] = (char*)malloc((strlen($1->name) + 1) * sizeof(char));
 												strcpy(temp2[functions[nr_functions]->nr_parameters - 1], $1->name);
-												printf("%s\n", $1->name);
-												free_const($1);
 
 												free(functions[nr_functions]->parameters_name);
 
 												functions[nr_functions]->parameters_name = temp2;
-
+												
 												int* temp3 = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
 
 												if(functions[nr_functions]->nr_parameters > 1)
 													memcpy(temp3, functions[nr_functions]->size, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
 
 												temp3[functions[nr_functions]->nr_parameters - 1] = $1->size;
-												free_const($1);
 
 												free(functions[nr_functions]->size);
 
 												functions[nr_functions]->size = temp3;
+		
+												add_element(peek(stack_scope[curr_pos]), $1); write_to_file($1);
 											}
 				|
        			;
 
 function_block 	: function_block assignments 
-				| function_block declaration { add_element(peek(stack_scope[curr_pos]), $2); write_to_file($2); }';'
-				| function_block definition { add_element(peek(stack_scope[curr_pos]), $2); write_to_file($2); }';'
+				| function_block declaration 	{ 
+													if(general_lookup($2->name) != NULL){
+														add_element(peek(stack_scope[curr_pos]), $2);
+														free_stack_global();
+														free_functions();
+														printf("Error at line: %d\n", yylineno);
+														printf("The variable is already declared!!!\n");
+														exit(1);
+													}
+													add_element(peek(stack_scope[curr_pos]), $2); 
+													write_to_file($2); 
+												}';'
+				| function_block definition 	{ 
+													if(general_lookup($2->name) != NULL){
+														add_element(peek(stack_scope[curr_pos]), $2);
+														free_stack_global();
+														free_functions();
+														printf("Error at line: %d\n", yylineno);
+														printf("The variable is already declared!!!\n");
+														exit(1);
+													}
+													add_element(peek(stack_scope[curr_pos]), $2); 
+													write_to_file($2); 
+												}';'
 				| function_block function_call ';'
 				| function_block while
 				| function_block for
@@ -334,7 +442,6 @@ function_call   :
 														}
 
 														for(int j = 0; j < functions[i]->nr_parameters; ++j){
-															printf("%d,%d,%d,%d\n",functions[i]->parameters[j], params[j], is_array[j], functions[i]->size[j]);
 															if(functions[i]->parameters[j] != params[j]){
 																free_stack_global();
 																free_functions();
@@ -419,13 +526,6 @@ params_call     : operations ',' params_call
 /*DECLARATION DEFINITION*/
 declaration 	: 
 				  TYPE ID 								{
-															if(general_lookup($2) != NULL){
-																free_stack_global();
-																free_functions();
-																printf("Error at line: %d\n", yylineno);
-																printf("The variable is already declared!!!\n");
-																exit(1);
-															}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
 															$$->name = $2;
 															$$->type = $1;
@@ -434,13 +534,6 @@ declaration 	:
 															$$->value.valINT = 0;
 														}
 				| TYPE ID '[' INT_CONST ']' 			{
-															if(general_lookup($2) != NULL){
-																free_stack_global();
-																free_functions();
-																printf("Error at line: %d\n", yylineno);
-																printf("The variable is already declared!!!\n");
-																exit(1);
-															}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
 															$$->name = $2;
 															$$->type = $1;
@@ -448,20 +541,30 @@ declaration 	:
 															$$->size = $4;
 															$$->value.valINT = 0;
 														}
+				| ID ID 								{
+															int type = 0;
+
+															if((type = find_class_name($1)) == -1){
+																free_stack_global();
+																free_functions();
+																printf("Error at line: %d\n", yylineno);
+																printf("Invalid type!!!\n");
+																exit(1);
+															}
+
+															$$ = (struct Variable*)malloc(sizeof(struct Variable));
+															$$->name = $2;
+															$$->type = type;
+															$$->is_const = 0;
+															$$->size = 0;
+															$$->value.valINT = 0;
+														}
 				; 
 
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
-															if(general_lookup($3) != NULL){
-																free_stack_global();
-																free_functions();
-																free_const($5);
-																printf("Error at line: %d\n", yylineno);
-																printf("The variable is already declared!!!\n");
-																exit(1);
-															}
 																	
-															if($2 != $5->type){
+															if($2 != $5->type || $5->size!=0){
 																free_stack_global();
 																free_functions();
 																free_const($5);
@@ -495,15 +598,7 @@ definition  	:
 															free_const($5);
 														}
 				| TYPE ID ASSIGN operations				{
-															if(general_lookup($2) != NULL){
-																free_stack_global();
-																free_functions();
-																free_const($4);
-																printf("Error at line: %d\n", yylineno);
-																printf("The variable is already declared!!!\n");
-																exit(1);
-															}
-															if($1 != $4->type){
+															if($1 != $4->type || $4->size!=0){
 																free_stack_global();
 																free_functions();
 																free_const($4);
@@ -541,15 +636,6 @@ definition  	:
 														printf("aici\n");
 													} ASSIGN '{' arr_item'}' 
 																				{
-																					if(general_lookup($3) != NULL){
-																						free_stack_global();
-																						free_functions();
-																						printf("Error at line: %d\n", yylineno);
-																						printf("The variable is already declared!!!\n");
-																						exit(1);
-																					}
-																					
-
 																					$$ = (struct Variable*)malloc(sizeof(struct Variable));
 																					$$->name = $3;
 																					$$->type = $2;
@@ -563,15 +649,6 @@ definition  	:
 														printf("aici\n");
 													} ASSIGN '{' arr_item'}' 
 																				{
-																					if(general_lookup($2) != NULL){
-																						free_stack_global();
-																						free_functions();
-																						printf("Error at line: %d\n", yylineno);
-																						printf("The variable is already declared!!!\n");
-																						exit(1);
-																					}
-																					
-
 																					$$ = (struct Variable*)malloc(sizeof(struct Variable));
 																					$$->name = $2;
 																					$$->type = $1;
@@ -662,14 +739,9 @@ assignments		: assignment ';'
 				| 
       			;
 
-shortcuts		: PLUSA 	{$$ = PLUSA;}
-				| MINUSA	{$$ = MINUSA;}
-				| MULTA		{$$ = MULTA;}
-				| SLASHA	{$$ = SLASHA;}
-				;
-
 assignment		: 
 				  ID ASSIGN operations		{
+												
 												struct Variable* v = general_lookup($1);
 
 												if(v == NULL || v->is_const == 1){
@@ -681,7 +753,7 @@ assignment		:
 													exit(1);
 												}
 
-												if(v->type != $3->type){
+												if(v->type != $3->type || $3->size!=0 || v->size!=0){
 													free_const($3);
 													free_stack_global();
 													free_functions();
@@ -701,7 +773,48 @@ assignment		:
 
 												free_const($3);
 											}	
-				| ID shortcuts operations
+				| ID ASSIGN ID '[' item ']'	{
+												if($5->type != INT || $5->size != 0){
+													free_stack_global();
+													free_const($5);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("Error: Invalid index!!!\n");
+													exit(1);
+												}
+
+												struct Variable* v = general_lookup($1);
+												struct Variable* a = general_lookup($3);
+
+												if(v == NULL || a == NULL || v->is_const == 1){
+													free_stack_global();
+													free_const($5);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is not declared or is const!!!\n");
+													exit(1);
+												}
+
+												if(v->type != a->type || a->size==0 || v->size!=0){
+													free_stack_global();
+													free_const($5);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The types are not compatible!!!\n");
+													exit(1);
+												}
+											
+												if($5->value.valINT >= a->size || $5->value.valINT < 0){
+													free_stack_global();
+													free_const($5);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The index is out of range!!!\n");
+													exit(1);
+												}
+
+												free_const($5);
+											}
 				| ID INCREMENT				{
 												struct Variable* v = general_lookup($1);
 
@@ -756,6 +869,99 @@ assignment		:
 													--v->value.valCHAR;
 
 											}
+				| ID '[' item ']' ASSIGN operations 
+											{
+												if($3->type != INT || $3->size != 0){
+													free_const($6);
+													free_const($3);
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("Error: Invalid index!!!\n");
+													exit(1);
+												}
+
+												struct Variable* v = general_lookup($1);
+												if(v == NULL || v->is_const == 1){
+													free_const($6);
+													free_const($3);
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is not declared or is const!!!\n");
+													exit(1);
+												}
+
+												if(v->type != $6->type || $6->size!=0){
+													free_const($6);
+													free_const($3);
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The types are not compatible!!!\n");
+													exit(1);
+												}
+
+												if($3->value.valINT >= v->size || $3->value.valINT < 0){
+													free_const($6);
+													free_const($3);
+													free_stack_global();
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The index is out of range!!!\n");
+													exit(1);
+												}
+
+
+											}
+				| ID '[' item ']' ASSIGN ID '[' item ']'
+											{
+												if($3->type != INT || $3->size != 0 || $8->type != INT || $8->size != 0){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													free_const($8);
+													printf("Error at line: %d\n", yylineno);
+													printf("Error: Invalid index!!!\n");
+													exit(1);
+												}
+
+												struct Variable* a1 = general_lookup($1);
+												struct Variable* a2 = general_lookup($6);
+
+												if(a1 == NULL || a2 == NULL || a1->is_const == 1){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													free_const($8);
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is not declared or is const!!!\n");
+													exit(1);
+												}
+
+												if(a1->type != a2->type){
+													free_stack_global();
+													free_const($3);
+													free_const($8);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The types are not compatible!!!\n");
+													exit(1);
+												}
+											
+												if($3->value.valINT >= a1->size || $3->value.valINT < 0 || $8->value.valINT >= a2->size || $8->value.valINT < 0){
+													free_stack_global();
+													free_const($3);
+													free_const($8);
+													free_functions();
+													printf("Error at line: %d\n", yylineno);
+													printf("The index is out of range!!!\n");
+													exit(1);
+												}
+
+												free_const($3);
+												free_const($8);
+											}
 				;
 
 
@@ -772,40 +978,28 @@ operations 		: item 							{$$ = $1;}
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if($1->type == INT && $3->type == INT){
-														$$->type = INT;
-														$$->value.valINT = $1->value.valINT + $3->value.valINT;
-													}
-													else if($1->type == FLOAT && $3->type == FLOAT){
-														$$->type = FLOAT;
-														$$->value.valFLOAT = $1->value.valFLOAT + $3->value.valFLOAT;
-													}
-													else if($1->type == STRING && $3->type == STRING){
-														$$->type = STRING;
-														int size = (strlen($1->value.valSTRING) + strlen($3->value.valSTRING) + 1) * sizeof(char);
-														$$->value.valSTRING = (char*)malloc(size);
-														strcpy($$->value.valSTRING, $1->value.valSTRING);
-														strcat($$->value.valSTRING, $3->value.valSTRING);
-													}
-													// else if($1->type == STRING && $3->type == CHAR){
-													// 	$$->type = STRING;
-													// 	int size = (strlen($1->value.valSTRING) + 2) * sizeof(char);
-													// 	$$->value.valSTRING = (char*)malloc(size);
-													// 	strcpy($$->value.valSTRING, $1->value.valSTRING);
-													// 	$$->value.valSTRING[strlen($$->value.valSTRING) + 1] = '\0';
-													// 	$$->value.valSTRING[strlen($$->value.valSTRING)] = $3->value.valCHAR;
-
-													// }
-													// else if($1->type == CHAR && $3->type == STRING){
-													// 	$$->type = STRING;
-													// 	int size = (strlen($3->value.valSTRING) + 2) * sizeof(char);
-													// 	$$->value.valSTRING = (char*)malloc(size);
-													// 	$$->value.valSTRING[1] = '\0';
-													// 	$$->value.valSTRING[0] = $1->value.valCHAR;
-													// 	strcat($$->value.valSTRING, $3->value.valSTRING);
-													// }
-													else{
-														compatible = 0;
+													if($1->size!=0 || $3->size!=0)
+														compatible=0;
+													else
+													{
+														if($1->type == INT && $3->type == INT){
+															$$->type = INT;
+															$$->value.valINT = $1->value.valINT + $3->value.valINT;
+														}
+														else if($1->type == FLOAT && $3->type == FLOAT){
+															$$->type = FLOAT;
+															$$->value.valFLOAT = $1->value.valFLOAT + $3->value.valFLOAT;
+														}
+														else if($1->type == STRING && $3->type == STRING){
+															$$->type = STRING;
+															int size = (strlen($1->value.valSTRING) + strlen($3->value.valSTRING) + 1) * sizeof(char);
+															$$->value.valSTRING = (char*)malloc(size);
+															strcpy($$->value.valSTRING, $1->value.valSTRING);
+															strcat($$->value.valSTRING, $3->value.valSTRING);
+														}
+														else{
+															compatible = 0;
+														}
 													}
 
 													free_const($1);
@@ -889,15 +1083,6 @@ operations 		: item 							{$$ = $1;}
 														$$->type = FLOAT;
 														$$->value.valFLOAT = $1->value.valFLOAT * $3->value.valFLOAT;
 													}
-													// else if($1->type == STRING && $3->type == INT){
-													// 	$$->type = STRING;
-													// 	int size = ((strlen($1->value.valSTRING) * $3->value.valINT) + 1) * sizeof(char);
-													// 	$$->value.valSTRING = (char*)malloc(size);
-													// 	strcpy($$->value.valSTRING, $1->value.valSTRING);
-														
-													// 	for(int i = 1; i < $3->value.valINT; ++i)
-													// 		strcat($$->value.valSTRING, $1->value.valSTRING);
-													// }
 													else{
 														compatible = 0;
 													}
@@ -1192,28 +1377,54 @@ void write_to_file(Variable* var)
         exit(1);
     }
 
-    fprintf(fp, "Variable name: %s,", var->name);
-    switch (var->type)
-    {
-        case INT:
-            fprintf(fp, "Type: int, Value: %d, ", var->value.valINT);
-            break;
-        case FLOAT:
-            fprintf(fp, "Type: float, Value: %f", var->value.valFLOAT);
-            break;
-        case CHAR:
-            fprintf(fp, "Type: char, Value: %c", var->value.valCHAR);
-            break;
-        case STRING:
-            fprintf(fp, "Type: string, Value: %s", var->value.valSTRING);
-            break;
-        case BOOL:
-            fprintf(fp, "Type: bool, Value: %d", var->value.valBOOL);
-            break;
-        default:
-            printf("Invalid type!\n");
-            exit(1);
-    }
+	if(var->size == 0){	
+		fprintf(fp, "Variable name: %s,", var->name);
+		switch (var->type)
+		{
+			case INT:
+				fprintf(fp, "Type: int, Value: %d;", var->value.valINT);
+				break;
+			case FLOAT:
+				fprintf(fp, "Type: float, Value: %f;", var->value.valFLOAT);
+				break;
+			case CHAR:
+				fprintf(fp, "Type: char, Value: %c;", var->value.valCHAR);
+				break;
+			case STRING:
+				fprintf(fp, "Type: string, Value: %s;", var->value.valSTRING);
+				break;
+			case BOOL:
+				fprintf(fp, "Type: bool, Value: %d;", var->value.valBOOL);
+				break;
+			default:
+				fprintf(fp, "Type: User defined;");
+				break;
+		}
+	}
+	else{
+		fprintf(fp, "Array name: %s,", var->name);
+		switch (var->type)
+		{
+			case INT:
+				fprintf(fp, "Type: int;");
+				break;
+			case FLOAT:
+				fprintf(fp, "Type: float;");
+				break;
+			case CHAR:
+				fprintf(fp, "Type: char;");
+				break;
+			case STRING:
+				fprintf(fp, "Type: string;");
+				break;
+			case BOOL:
+				fprintf(fp, "Type: bool;");
+				break;
+			default:
+				fprintf(fp, "Type: User defined;");
+				break;
+		}
+	}
 
 	fprintf(fp, "\n");
 
@@ -1248,7 +1459,8 @@ void write_function_to_file(Function* func)
             fprintf(fp, "Return type: bool, ");
             break;
         default:
-            fprintf(fp, "Return type: void, ");
+            fprintf(fp, "Return type: User defined, ");
+			break;
     }
 
 	fprintf(fp, "Parameters: ");
@@ -1275,8 +1487,8 @@ void write_function_to_file(Function* func)
 				fprintf(fp, "Parameter type: bool. ");
 				break;
 			default:
-				printf("Invalid type!\n");
-				exit(1);
+				fprintf(fp, "Parameter type: User defined.");
+				break;
 		}
     }
     fprintf(fp, "\n");

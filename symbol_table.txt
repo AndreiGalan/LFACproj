@@ -1,13 +1,15 @@
-Variable name: i,Type: int, Value: 1000, 
-Variable name: j,Type: int, Value: 1000, 
-Variable name: k,Type: string, Value: salut
-Variable name: a,Type: int, Value: 0, 
-Variable name: a,Type: int, Value: 0, 
-Variable name: o,Type: int, Value: 1, 
-Variable name: sda,Type: bool, Value: 0
-Variable name: m,Type: int, Value: 10, 
-Variable name: jj,Type: int, Value: 0, 
-Variable name: gggg,Type: int, Value: 0, 
-Variable name: aaaa,Type: float, Value: 0.000000
-Variable name: adssf,Type: int, Value: 10, 
-Variable name: dfdsf,Type: int, Value: 0, 
+Variable name: i,Type: int, Value: 1000;
+Variable name: j,Type: int, Value: 1000;
+Variable name: k,Type: string, Value: salut;
+Variable name: b,Type: int, Value: 0;
+Variable name: a,Type: int, Value: 0;
+Variable name: b,Type: int, Value: 0;
+Variable name: a,Type: int, Value: 0;
+Array name: h,Type: float;
+Array name: b,Type: int;
+Variable name: a,Type: int, Value: 0;
+Variable name: b,Type: string, Value: (null);
+Variable name: a,Type: int, Value: 0;
+Variable name: b,Type: string, Value: (null);
+Variable name: a,Type: int, Value: 0;
+Variable name: p,Type: User defined;

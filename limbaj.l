@@ -18,7 +18,6 @@
 
 "pr" {return PROCEDURE;}
 "fn" {return FUNCTION;}
-"void" {return VOID;}
 "->" {return ARROW;}
 "return" {return RETURN;}
 
@@ -28,7 +27,6 @@
 "for" {return FOR;}
 
 "class" {return CLASS;}
-"private"|"protected"|"public" {return CLASS_SPEC;}
 "." {return MEMBER_ACCESS;}
 
 
@@ -42,13 +40,9 @@
 "++" {return INCREMENT;}
 "--" {return DECREMENT;}
 "+" {return PLUS;}
-"+=" {return PLUSA;}
 "-" {return MINUS;}
-"-=" {return MINUSA;}
 "*" {return MULT;}
-"*=" {return MULTA;}
 "/" {return SLASH;}
-"/=" {return SLASHA;}
 "%" {return REMAIDER; }
 
 "&&" {return AND;}
