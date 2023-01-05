@@ -15,6 +15,7 @@ int nr_functions = 0;
 int* params;
 char** params_name; 
 int nr_params = 0;
+int* is_array;
 
 void write_to_file(Variable* var);
 void write_function_to_file(Function* func);
@@ -241,6 +242,18 @@ params 			:
 												free(functions[nr_functions]->parameters_name);
 
 												functions[nr_functions]->parameters_name = temp2;
+												
+												int* temp3 = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
+
+												if(functions[nr_functions]->nr_parameters > 1)
+													memcpy(temp3, functions[nr_functions]->size, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
+
+												temp3[functions[nr_functions]->nr_parameters - 1] = $1->size;
+												free_const($1);
+
+												free(functions[nr_functions]->size);
+
+												functions[nr_functions]->size = temp3;
 											}
        			| declaration 				{
 												++functions[nr_functions]->nr_parameters; 
@@ -270,6 +283,18 @@ params 			:
 												free(functions[nr_functions]->parameters_name);
 
 												functions[nr_functions]->parameters_name = temp2;
+
+												int* temp3 = (int*)malloc(functions[nr_functions]->nr_parameters * sizeof(int));
+
+												if(functions[nr_functions]->nr_parameters > 1)
+													memcpy(temp3, functions[nr_functions]->size, (functions[nr_functions]->nr_parameters -1) * sizeof(int));
+
+												temp3[functions[nr_functions]->nr_parameters - 1] = $1->size;
+												free_const($1);
+
+												free(functions[nr_functions]->size);
+
+												functions[nr_functions]->size = temp3;
 											}
 				|
        			;
@@ -309,6 +334,7 @@ function_call   :
 														}
 
 														for(int j = 0; j < functions[i]->nr_parameters; ++j){
+															printf("%d,%d,%d,%d\n",functions[i]->parameters[j], params[j], is_array[j], functions[i]->size[j]);
 															if(functions[i]->parameters[j] != params[j]){
 																free_stack_global();
 																free_functions();
@@ -316,6 +342,14 @@ function_call   :
 																printf("The parameters are of wrong type!!!\n");
 																exit(1);
 															}
+															else
+																if(is_array[j]!=0 && functions[i]->size[j]==0 || ((is_array[j]!=0 && functions[i]->size[j]!=0) && functions[i]->size[j]<is_array[j] )){
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The parameters are of wrong type!!!\n");
+																	exit(1);
+																}
 														}
 
 														$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -339,25 +373,45 @@ function_call   :
 params_call     : operations ',' params_call 
 											{
 												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
+												int* temp2 = (int*)malloc(sizeof(int) * (nr_params+1));
 												if(nr_params > 0)
+												{
 													memcpy(temp, params, sizeof(int) * nr_params);
-
+													memcpy(temp2, is_array, sizeof(int) * nr_params);
+												}
+												printf("%d\n",$1->size);
 												temp[nr_params++] = $1->type;
+												if($1->size!=0)
+													temp2[nr_params-1]=$1->size;
+												else
+													temp2[nr_params-1]=$1->size;
 												free_const($1);
 
 												free(params);
+												free(is_array);
 												params = temp;
+												is_array=temp2;
 											}
 				| operations 				{
 												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
+												int* temp2 = (int*)malloc(sizeof(int) * (nr_params+1));
 												if(nr_params > 0)
+												{
 													memcpy(temp, params, sizeof(int) * nr_params);
-
+													memcpy(temp2, is_array, sizeof(int) * nr_params);
+												}
+												printf("%d\n",$1->size);
 												temp[nr_params++] = $1->type;
+												if($1->size!=0)
+													temp2[nr_params-1]=$1->size;
+												else
+													temp2[nr_params-1]=$1->size;
 												free_const($1);
 
 												free(params);
+												free(is_array);
 												params = temp;
+												is_array=temp2;
 											}
 				|
 				;

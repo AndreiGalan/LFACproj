@@ -15,7 +15,7 @@ string k = "salut";
 pr ll(int b){
     int a = 0;
 }
-pr l1(int b){
+pr l1(int b[100],float h[20]){
     int a = 0;
 }
 
@@ -45,7 +45,7 @@ main
     i = m*100;
 
     int gggg[100] = {};
-
+    float aaaa[20];
     while( sda){
         m = 0;
         i = 92321;
@@ -53,6 +53,6 @@ main
     }
 
     int dfdsf;
-
-    l1(gggg);
+    dfdsf=gggg[1];
+    l1(gggg,aaaa);
 }

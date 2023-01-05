@@ -8,5 +8,6 @@ Variable name: sda,Type: bool, Value: 0
 Variable name: m,Type: int, Value: 10, 
 Variable name: jj,Type: int, Value: 0, 
 Variable name: gggg,Type: int, Value: 0, 
+Variable name: aaaa,Type: float, Value: 0.000000
 Variable name: adssf,Type: int, Value: 10, 
 Variable name: dfdsf,Type: int, Value: 0, 

@@ -8,6 +8,7 @@ typedef struct Function
 	char** parameters_name; 
 	int* parameters;
 	int nr_parameters;
+	int* size;
 } Function;
 
 typedef union Value
