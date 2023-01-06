@@ -12,7 +12,7 @@ Variable name: b,Type: string, Value: (null);
 Variable name: a,Type: int, Value: 0;
 Variable name: b,Type: string, Value: (null);
 Variable name: a,Type: int, Value: 0;
-Variable name: p,Type: User defined;
+Array name: p,Type: User defined;
 Variable name: p1,Type: User defined;
 Variable name: a,Type: int, Value: 0;
 Array name: x,Type: int;

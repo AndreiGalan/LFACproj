@@ -93,13 +93,19 @@ struct Class* find_class_pointer(char* name)
 
 struct Variable* class_lookup(int class, char* name)
 {
-	for(int i = 0; i < classes[class]->nr_variables; ++i){
+	for(int i = 0; i < classes[class]->nr_variables; ++i)
 		if(strcmp(classes[class]->variables[i]->name, name) == 0)
-		{
 			return classes[class]->variables[i];
-		}
-	}
 	
+	return NULL;
+}
+
+struct Function* class_fun_lookup(int class, char* name)
+{
+	for(int i = 0; i < classes[class]->nr_functions; ++i)
+		if(strcmp(classes[class]->functions[i]->name, name) == 0)
+			return classes[class]->functions[i];
+
 	return NULL;
 }
 
@@ -133,7 +139,7 @@ struct Variable* class_lookup(int class, char* name)
 %token <valSTRING> STRING_CONST ID TYPEOF
 %token <valBOOL> BOOL_CONST
 
-%type <variable> declaration definition constant_value operations item rtn function_call class_access
+%type <variable> declaration definition constant_value operations item rtn function_call class_access_var class_access_fun
 %type <valINT> TYPE
 %type <valBOOL> bool_expresion bool_statement
 
@@ -199,7 +205,7 @@ prog_parts 		: prog_parts function
 				|
 				;
 
-MAIN_BLOC 		: MAIN {printf("main\n"); stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);} '{' function_block '}'	
+MAIN_BLOC 		: MAIN {stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);} '{' function_block '}'	
      			;
 
 /* CLASS */
@@ -260,8 +266,8 @@ class_block		:
 				| 
 				;
 
-class_access 	: 
-				  ID MEMBER_ACCESS ID 						{ 
+class_access_var: 
+				  ID  MEMBER_ACCESS ID 						{ 
 																struct Variable* v = general_lookup($1);
 																if(v==NULL)
 																{
@@ -283,6 +289,18 @@ class_access 	:
 																	printf("The variable has no members!!!\n");
 																	exit(1);
 																}
+
+																if(v->size!=0)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable must be an array!!!\n");
+																	exit(1);
+																}
+
 																$$ = class_lookup(v->type, $3);
 																
 																free($1);
@@ -294,6 +312,8 @@ class_access 	:
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
 																}
+
+
 															}
 				| ID MEMBER_ACCESS ID '[' item ']' 			{
 																struct Variable* v = general_lookup($1);
@@ -317,18 +337,28 @@ class_access 	:
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
 																}
-																$$ = class_lookup(v->type, $3);
+																if(v->size!=0)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable must be an array!!!\n");
+																	exit(1);
+																}
+																struct Variable* a = class_lookup(v->type, $3);
 																
 																free($1);
 																free($3);
-																if($$ == NULL){
+																if(a == NULL){
 																	free_stack_global();
 																	free_functions();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
 																}
-																if($5->value.valINT >= $$->size || $5->value.valINT < 0){
+																if($5->value.valINT >= a->size || $5->value.valINT < 0){
 																	free_stack_global();
 																	free_const($5);
 																	free_functions();
@@ -336,11 +366,360 @@ class_access 	:
 																	printf("The index is out of range!!!\n");
 																	exit(1);
 																}
+
+																$$ = (struct Variable*)malloc(sizeof(struct Variable));
+																$$->name = (char*)malloc(sizeof(char)*(strlen("@const") + 1));
+																strcpy($$->name,"@const");
+																$$->type = a->type;
+																$$->size = 0;
+																$$->value.valINT = 0;
+
 																free_const($5);
-																//printf("%d\n",$$->type);
 															}
-				| ID MEMBER_ACCESS ID '(' params_call ')'	{
+				| ID '[' item ']'  MEMBER_ACCESS ID 		{ 
+																struct Variable* v = general_lookup($1);
+																if(v==NULL)
+																{
+																	free($1);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable has no members!!!\n");
+																	exit(1);
+																}
+
+																if(v->size==0)
+																{
+																	free($1);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not an array!!!\n");
+																	exit(1);
+																}
+																if($3->type != INT || $3->size != 0){
+																	free_stack_global();
+																	free($1);
+																	free_const($3);
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("Error: Invalid index!!!\n");
+																	exit(1);
+																}
+																if($3->value.valINT >= v->size || $3->value.valINT < 0){
+																	free($1);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The index is out of range!!!\n");
+																	exit(1);
+																}
+																$$ = class_lookup(v->type, $6);
 																
+																free($1);
+																free_const($3);
+																if($$ == NULL){
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+
+
+															}
+				| ID '[' item ']' MEMBER_ACCESS ID '[' item ']' 			{
+																struct Variable* v = general_lookup($1);
+																if(v==NULL)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->size==0)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not an array!!!\n");
+																	exit(1);
+																}
+																if($3->type != INT || $3->size != 0){
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("Error: Invalid index!!!\n");
+																	exit(1);
+																}
+																if($3->value.valINT >= v->size || $3->value.valINT < 0){
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The index is out of range!!!\n");
+																	exit(1);
+																}
+																struct Variable* a = class_lookup(v->type, $6);
+																
+																free($1);
+																free($6);
+																if(a == NULL){
+																	free_stack_global();
+																	free_functions();
+																	free_const($3);
+																	free_const($8);
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if($8->value.valINT >= a->size || $8->value.valINT < 0){
+																	free_const($3);
+																	free_const($8);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The index is out of range!!!\n");
+																	exit(1);
+																}
+
+																$$ = (struct Variable*)malloc(sizeof(struct Variable));
+																$$->name = (char*)malloc(sizeof(char)*(strlen("@const") + 1));
+																strcpy($$->name,"@const");
+																$$->type = a->type;
+																$$->size = 0;
+																$$->value.valINT = 0;
+
+																free_const($3);
+																free_const($8);
+															}
+				;
+
+class_access_fun:
+				  ID MEMBER_ACCESS ID '(' params_call ')'	{
+																struct Variable* v = general_lookup($1);
+																if(v==NULL)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable has no members!!!\n");
+																	exit(1);
+																}
+																if(v->size!=0)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable must be an array!!!\n");
+																	exit(1);
+																}
+
+																struct Class* class = classes[v->type];
+																for(int i = 0; i < class->nr_functions; ++i){
+																	if(strcmp(class->functions[i]->name, $3) == 0){
+																		if(class->functions[i]->nr_parameters != nr_params){
+																			free_stack_global();
+																			free_functions();
+																			printf("Error at line: %d\n", yylineno);
+																			printf("You provided the wrong number of parameters!!!\n");
+																			exit(1);
+																		}
+
+																		for(int j = 0; j < class->functions[i]->nr_parameters; ++j){
+																			if(class->functions[i]->parameters[j] != params[j]){
+																				free_stack_global();
+																				free_functions();
+																				printf("Error at line: %d\n", yylineno);
+																				printf("The parameters are of wrong type!!!\n");
+																				exit(1);
+																			}
+																			else
+																				if(is_array[j]!=0 && class->functions[i]->size[j]==0 || ((is_array[j]!=0 && class->functions[i]->size[j]!=0) && class->functions[i]->size[j]<is_array[j] )){
+																					free_stack_global();
+																					free_functions();
+																					printf("Error at line: %d\n", yylineno);
+																					printf("The parameters are of wrong type!!!\n");
+																					exit(1);
+																				}
+																		}
+
+																		$$ = (struct Variable*)malloc(sizeof(struct Variable));
+																		$$->name = (char*)malloc((strlen("@const")+1)*sizeof(char));
+																		strcpy($$->name, "@const");
+																		$$->type = class->functions[i]->return_type;
+																		$$->value.valINT = 0;
+																	}
+																}
+
+																free(params);
+																free(params_name);
+																params = NULL;
+																params_name = NULL;
+																nr_params = 0;
+
+
+																free($1);
+																free($3);
+															}
+				| ID '[' item ']' MEMBER_ACCESS ID '(' params_call ')'	{
+																struct Variable* v = general_lookup($1);
+																if(v==NULL)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable has no members!!!\n");
+																	exit(1);
+																}
+																if(v->size==0)
+																{
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not an array!!!\n");
+																	exit(1);
+																}
+																if($3->type != INT || $3->size != 0){
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("Error: Invalid index!!!\n");
+																	exit(1);
+																}
+																if($3->value.valINT >= v->size || $3->value.valINT < 0){
+																	free($1);
+																	free($6);
+																	free_const($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The index is out of range!!!\n");
+																	exit(1);
+																}
+
+																struct Class* class = classes[v->type];
+																for(int i = 0; i < class->nr_functions; ++i){
+																	if(strcmp(class->functions[i]->name, $6) == 0){
+																		if(class->functions[i]->nr_parameters != nr_params){
+																			free_stack_global();
+																			free_functions();
+																			printf("Error at line: %d\n", yylineno);
+																			printf("You provided the wrong number of parameters!!!\n");
+																			exit(1);
+																		}
+
+																		for(int j = 0; j < class->functions[i]->nr_parameters; ++j){
+																			if(class->functions[i]->parameters[j] != params[j]){
+																				free_stack_global();
+																				free_functions();
+																				printf("Error at line: %d\n", yylineno);
+																				printf("The parameters are of wrong type!!!\n");
+																				exit(1);
+																			}
+																			else
+																				if(is_array[j]!=0 && class->functions[i]->size[j]==0 || ((is_array[j]!=0 && class->functions[i]->size[j]!=0) && class->functions[i]->size[j]<is_array[j] )){
+																					free_stack_global();
+																					free_functions();
+																					printf("Error at line: %d\n", yylineno);
+																					printf("The parameters are of wrong type!!!\n");
+																					exit(1);
+																				}
+																		}
+
+																		$$ = (struct Variable*)malloc(sizeof(struct Variable));
+																		$$->name = (char*)malloc((strlen("@const")+1)*sizeof(char));
+																		strcpy($$->name, "@const");
+																		$$->type = class->functions[i]->return_type;
+																		$$->value.valINT = 0;
+																	}
+																}
+
+																free(params);
+																free(params_name);
+																params = NULL;
+																params_name = NULL;
+																nr_params = 0;
+
+
+																free($1);
+																free($6);
+																free_const($3);
 															}
 				;
 
@@ -521,10 +900,42 @@ function_block 	: function_block assignments
 													write_to_file($2); 
 												}';'
 				| function_block function_call ';'
-				| function_block class_access ';'
+				| function_block class_access_var ';'
+				| function_block class_access_fun ';'
 				| function_block while
 				| function_block for
 				| function_block if
+				| function_block TYPEOF '(' operations ')' ';' 	
+							{
+								char* name;
+								switch ($4->type)
+								{
+									case INT:
+										name = (char*)"int";
+										break;
+									case FLOAT:
+										name = (char*)"float";
+										break;
+									case CHAR:
+										name = (char*)"char";
+										break;
+									case STRING:
+										name = (char*)"string";
+										break;
+									case BOOL:
+										name = (char*)"bool";
+										break;
+									default:
+										name = classes[$4->type]->name;
+										break;
+								}
+
+								if($4->size == 0)
+									printf("Type: %s;\n", name);
+								else
+									printf("Type: %s[%d];\n", name, $4->size);
+
+							}
 				|
 				;
 
@@ -597,7 +1008,6 @@ params_call     : operations ',' params_call
 													memcpy(temp, params, sizeof(int) * nr_params);
 													memcpy(temp2, is_array, sizeof(int) * nr_params);
 												}
-												printf("%d\n",$1->size);
 												temp[nr_params++] = $1->type;
 												if($1->size!=0)
 													temp2[nr_params-1]=$1->size;
@@ -618,7 +1028,6 @@ params_call     : operations ',' params_call
 													memcpy(temp, params, sizeof(int) * nr_params);
 													memcpy(temp2, is_array, sizeof(int) * nr_params);
 												}
-												printf("%d\n",$1->size);
 												temp[nr_params++] = $1->type;
 												if($1->size!=0)
 													temp2[nr_params-1]=$1->size;
@@ -645,6 +1054,13 @@ declaration 	:
 															$$->value.valINT = 0;
 														}
 				| TYPE ID '[' INT_CONST ']' 			{
+															if($4 <= 0){
+																free_stack_global();
+																free_functions();
+																printf("Error at line: %d\n", yylineno);
+																printf("The index cannot be negative or zero!!!\n");
+																exit(1);
+															}
 															$$ = (struct Variable*)malloc(sizeof(struct Variable));
 															$$->name = $2;
 															$$->type = $1;
@@ -671,6 +1087,13 @@ declaration 	:
 															$$->value.valINT = 0;
 														}
 				| ID ID '[' INT_CONST ']'				{
+															if($4 <= 0){
+																free_stack_global();
+																free_functions();
+																printf("Error at line: %d\n", yylineno);
+																printf("The index cannot be negative or zero!!!\n");
+																exit(1);
+															}
 															int type = 0;
 
 															if((type = find_class_name($1)) == -1){
@@ -761,8 +1184,14 @@ definition  	:
 															$$->size = 0;
 														}
 				| CONST TYPE ID '[' INT_CONST ']' 	{
+														if($5 <= 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The index cannot be negative or zero!!!\n");
+															exit(1);
+														}
 														array_type = $2;
-														printf("aici\n");
 													} ASSIGN '{' arr_item'}' 
 																				{
 																					$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -774,8 +1203,14 @@ definition  	:
 																					array_type = 0;
 																				}
 				| TYPE ID '[' INT_CONST ']' 		{
+														if($4 <= 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The index cannot be negative or zero!!!\n");
+															exit(1);
+														}
 														array_type = $1;
-														printf("aici\n");
 													} ASSIGN '{' arr_item'}' 
 																				{
 																					$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -1091,7 +1526,7 @@ assignment		:
 												free_const($3);
 												free_const($8);
 											}
-				| class_access ASSIGN operations
+				| class_access_var ASSIGN operations
 												{
 													
 													if($1->type != $3->type || $3->size!=0){
@@ -1114,7 +1549,7 @@ assignment		:
 
 													free_const($3);
 													}
-		        | class_access ASSIGN ID '[' item ']'{
+		        | class_access_var ASSIGN ID '[' item ']'{
 														if($5->type != INT || $5->size != 0){
 															free_stack_global();
 															free_const($5);
@@ -1211,17 +1646,22 @@ operations 		: item 							{$$ = $1;}
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if($1->type == INT && $3->type == INT){
-														$$->type = INT;
-														$$->value.valINT = $1->value.valINT - $3->value.valINT;
-													}
-													else if($1->type == FLOAT && $3->type == FLOAT){
-														$$->type = FLOAT;
-														$$->value.valFLOAT = $1->value.valFLOAT - $3->value.valFLOAT;
-													}
-													else{
-														compatible = 0;
-													}
+													if($1->size!=0 || $3->size!=0)
+														compatible=0;
+													else
+														{
+															if($1->type == INT && $3->type == INT){
+																$$->type = INT;
+																$$->value.valINT = $1->value.valINT - $3->value.valINT;
+															}
+															else if($1->type == FLOAT && $3->type == FLOAT){
+																$$->type = FLOAT;
+																$$->value.valFLOAT = $1->value.valFLOAT - $3->value.valFLOAT;
+															}
+															else{
+																compatible = 0;
+															}
+														}
 
 													free_const($1);
 													free_const($3);
@@ -1239,27 +1679,32 @@ operations 		: item 							{$$ = $1;}
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if(($1->type == INT && $3->type == INT)){
-														$$->type = INT;
-														$$->value.valINT = ($1->value.valINT / $3->value.valINT);
-													}
-													else if($1->type == FLOAT && $3->type == FLOAT){
-														$$->type = FLOAT;
-														$$->value.valFLOAT = $1->value.valFLOAT / $3->value.valFLOAT;
-													}
-													else{
-														compatible = 0;
-													}
+													if($1->size!=0 || $3->size!=0)
+														compatible=0;
+													else
+													{	
+														if(($1->type == INT && $3->type == INT)){
+															$$->type = INT;
+															$$->value.valINT = ($1->value.valINT / $3->value.valINT);
+														}
+														else if($1->type == FLOAT && $3->type == FLOAT){
+															$$->type = FLOAT;
+															$$->value.valFLOAT = $1->value.valFLOAT / $3->value.valFLOAT;
+														}
+														else{
+															compatible = 0;
+														}
 
-													free_const($1);
-													free_const($3);
+														free_const($1);
+														free_const($3);
 
-													if(compatible == 0){
-														free_stack_global();
-														free_functions();
-														printf("Error at line: %d\n", yylineno);
-														printf("These types can't be divided!!!\n");
-        												exit(1);
+														if(compatible == 0){
+															free_stack_global();
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("These types can't be divided!!!\n");
+															exit(1);
+														}
 													}
 												}
 				| operations MULT operations	{
@@ -1267,16 +1712,21 @@ operations 		: item 							{$$ = $1;}
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if($1->type == INT && $3->type == INT){
-														$$->type = INT;
-														$$->value.valINT = $1->value.valINT * $3->value.valINT;
-													}
-													else if($1->type == FLOAT && $3->type == FLOAT){
-														$$->type = FLOAT;
-														$$->value.valFLOAT = $1->value.valFLOAT * $3->value.valFLOAT;
-													}
-													else{
-														compatible = 0;
+													if($1->size!=0 || $3->size!=0)
+														compatible=0;
+													else
+													{	
+														if($1->type == INT && $3->type == INT){
+															$$->type = INT;
+															$$->value.valINT = $1->value.valINT * $3->value.valINT;
+														}
+														else if($1->type == FLOAT && $3->type == FLOAT){
+															$$->type = FLOAT;
+															$$->value.valFLOAT = $1->value.valFLOAT * $3->value.valFLOAT;
+														}
+														else{
+															compatible = 0;
+														}
 													}
 
 													free_const($1);
@@ -1295,13 +1745,18 @@ operations 		: item 							{$$ = $1;}
 													$$ = (struct Variable*)malloc(sizeof(struct Variable));
 													$$->name = (char*)malloc(strlen("@const") + 1);
 													strcpy($$->name, "@const");
-													if(($1->type == INT && $3->type == INT)){
-														$$->type = INT;
-														$$->value.valINT = $1->value.valINT % $3->value.valINT;
-													}
-													else{
-														compatible = 0;
-													}
+													if($1->size!=0 || $3->size!=0)
+														compatible=0;
+													else
+														{	
+															if(($1->type == INT && $3->type == INT)){
+																$$->type = INT;
+																$$->value.valINT = $1->value.valINT % $3->value.valINT;
+															}
+															else{
+																compatible = 0;
+															}
+														}
 
 													free_const($1);
 													free_const($3);
@@ -1327,7 +1782,8 @@ operations 		: item 							{$$ = $1;}
 
 													$$ = $1;
 												}
-				| class_access
+				| class_access_var
+				| class_access_fun
 				;
 
 /*Control flow statements*/
@@ -1353,7 +1809,7 @@ bool_expresion	:
 												free_const($1);
 											}
 				| item NEQ item 			{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size != 0 || $3->size != 0){
 													free_stack_global();
 													free_functions();
 													free_const($1);
@@ -1375,7 +1831,7 @@ bool_expresion	:
 												free_const($3);
 											}
 				| item EQ item				{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
 													free_const($1);
@@ -1398,7 +1854,7 @@ bool_expresion	:
 											}
 
 				| item LESS item			{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													
 													free_stack_global();
 													free_functions();
@@ -1421,7 +1877,7 @@ bool_expresion	:
 												free_const($3);
 											}
 				| item LESSOREQ item		{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
 													free_const($1);
@@ -1443,7 +1899,7 @@ bool_expresion	:
 												free_const($3);
 											}
 				| item GREATER item			{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
 													free_const($1);
@@ -1465,7 +1921,7 @@ bool_expresion	:
 												free_const($3);
 											}
 				| item GREATEROREQ item		{
-												if($1->type != $3->type){
+												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
 													free_const($1);
@@ -1501,6 +1957,55 @@ item            :
 						}
 					}
 				| constant_value
+				| class_access_var
+				| ID '[' item ']' 			{
+												struct Variable* a = general_lookup($1);
+												free($1);
+												if(a == NULL){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													printf("Error at line: %d\n", yylineno);
+													printf("The variable is not declared or is const!!!\n");
+													exit(1);
+												}
+
+												if(a->size==0 ){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													printf("Error at line: %d\n", yylineno);
+													printf("The types are not compatible!!!\n");
+													exit(1);
+												}
+
+												if($3->type != INT){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													printf("Error at line: %d\n", yylineno);
+													printf("The index is of the wrong type!!!\n");
+													exit(1);
+												}
+											
+												if($3->value.valINT >= a->size || $3->value.valINT < 0){
+													free_stack_global();
+													free_functions();
+													free_const($3);
+													printf("Error at line: %d\n", yylineno);
+													printf("The index is out of range!!!\n");
+													exit(1);
+												}
+
+												$$ = (struct Variable*)malloc(sizeof(struct Variable));
+												$$->name = (char*)malloc(sizeof(char)*(strlen("@const") + 1));
+												strcpy($$->name,"@const");
+												$$->type = a->type;
+												$$->size = 0;
+												$$->value.valINT = 0;
+
+												free_const($3);
+											}
 				;
 				
 

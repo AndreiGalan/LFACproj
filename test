@@ -11,8 +11,10 @@ class CLASS
     int j = 0;
     int x[100];
 
-    pr ll(int b){
+    fn ll(int b) -> int
+    {
         int a = 0;
+        return a;
     }
 
 }
@@ -45,10 +47,19 @@ fn p1(int a, string b) -> int
 
 main
 {
-    CLASS p;
+    CLASS p[100];
     CLASS p1;
     int a;
-    int x[100];
-    a.x=1;
-    p.x[1]=x[1];
+    int x[2];
+
+    a = 1;
+
+
+
+    p1.ll(2);
+    p[1].i=x[1];
+    bool b = p[1].x[1] > x[a];
+
+
+    TypeOf(x[1]+p1.i);
 }
