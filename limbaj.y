@@ -23,7 +23,8 @@ int* is_array;
 void write_to_file(Variable* var);
 void write_function_to_file(Function* func);
 
-int find_class_name(char* name){
+int find_class_name(char* name)
+{
 	for(int i = 0; i < nr_classes; ++i)
 		if(strcmp(classes[i]->name, name) == 0)
 			return i;
@@ -78,6 +79,17 @@ struct Variable* general_lookup(const char* name)
 	return var;
 }
 
+
+struct Variable* class_lookup(struct Class* class, char* name)
+{
+	for(int i = 0; i < class->nr_variables; ++i){
+		if(strcmp(class->variables[i]->name, name) == 0)
+			return class->variables[i];
+	}
+
+	return NULL;
+}
+
 %}
 
 %union 
@@ -108,7 +120,7 @@ struct Variable* general_lookup(const char* name)
 %token <valSTRING> STRING_CONST ID TYPEOF
 %token <valBOOL> BOOL_CONST
 
-%type <variable> declaration definition constant_value operations item rtn function_call
+%type <variable> declaration definition constant_value operations item rtn function_call class_access
 %type <valINT> TYPE
 %type <valBOOL> bool_expresion bool_statement
 
@@ -194,7 +206,8 @@ class			: CLASS ID 	{
 							} '{' class_block '}' {++nr_classes;}
 				;
 
-class_block		: class_block function 			{
+class_block		: 
+				  class_block function 			{
 													--nr_functions;
 													for(int i = 0; i < classes[nr_classes]->nr_functions; ++i){
 														if(strcmp(classes[nr_classes]->functions[i]->name, functions[nr_functions]->name) == 0){
@@ -232,6 +245,40 @@ class_block		: class_block function 			{
 													classes[nr_classes]->variables[classes[nr_classes]->nr_variables++] = $2;
 												}
 				| 
+				;
+
+class_access 	: 
+				  ID MEMBER_ACCESS ID 						{
+																struct Variable* v = general_lookup($1);
+
+																if(v == NULL){
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+
+
+																$$ = class_lookup(find_class_pointer($1), $3);
+																free($1);
+																free($3);
+																if($$ == NULL){
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+															}
+				| ID MEMBER_ACCESS ID '[' item ']' 			{
+																
+															}
+				| ID MEMBER_ACCESS ID '(' params_call ')'	{
+																
+															}
 				;
 
 /*FUNCTION*/
@@ -411,6 +458,7 @@ function_block 	: function_block assignments
 													write_to_file($2); 
 												}';'
 				| function_block function_call ';'
+				| function_block class_access ';'
 				| function_block while
 				| function_block for
 				| function_block if
@@ -557,6 +605,24 @@ declaration 	:
 															$$->type = type;
 															$$->is_const = 0;
 															$$->size = 0;
+															$$->value.valINT = 0;
+														}
+				| ID ID '[' INT_CONST ']'				{
+															int type = 0;
+
+															if((type = find_class_name($1)) == -1){
+																free_stack_global();
+																free_functions();
+																printf("Error at line: %d\n", yylineno);
+																printf("Invalid type!!!\n");
+																exit(1);
+															}
+
+															$$ = (struct Variable*)malloc(sizeof(struct Variable));
+															$$->name = $2;
+															$$->type = type;
+															$$->is_const = 0;
+															$$->size = $4;
 															$$->value.valINT = 0;
 														}
 				; 
@@ -1135,6 +1201,7 @@ operations 		: item 							{$$ = $1;}
 
 													$$ = $1;
 												}
+				| class_access
 				;
 
 /*Control flow statements*/
