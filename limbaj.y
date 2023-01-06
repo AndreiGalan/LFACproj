@@ -79,14 +79,27 @@ struct Variable* general_lookup(const char* name)
 	return var;
 }
 
-
-struct Variable* class_lookup(struct Class* class, char* name)
+struct Class* find_class_pointer(char* name)
 {
-	for(int i = 0; i < class->nr_variables; ++i){
-		if(strcmp(class->variables[i]->name, name) == 0)
-			return class->variables[i];
+	
+	for(int i = 0; i < nr_classes; ++i){
+		printf("%s\n",classes[i]->name);
+		if(strcmp(classes[i]->name, name) == 0)
+			return classes[i];
 	}
 
+	return NULL;
+}
+
+struct Variable* class_lookup(int class, char* name)
+{
+	for(int i = 0; i < classes[class]->nr_variables; ++i){
+		if(strcmp(classes[class]->variables[i]->name, name) == 0)
+		{
+			return classes[class]->variables[i];
+		}
+	}
+	
 	return NULL;
 }
 
@@ -248,10 +261,10 @@ class_block		:
 				;
 
 class_access 	: 
-				  ID MEMBER_ACCESS ID 						{
+				  ID MEMBER_ACCESS ID 						{ 
 																struct Variable* v = general_lookup($1);
-
-																if(v == NULL){
+																if(v==NULL)
+																{
 																	free($1);
 																	free($3);
 																	free_stack_global();
@@ -260,9 +273,18 @@ class_access 	:
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
 																}
-
-
-																$$ = class_lookup(find_class_pointer($1), $3);
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable has no members!!!\n");
+																	exit(1);
+																}
+																$$ = class_lookup(v->type, $3);
+																
 																free($1);
 																free($3);
 																if($$ == NULL){
@@ -274,7 +296,48 @@ class_access 	:
 																}
 															}
 				| ID MEMBER_ACCESS ID '[' item ']' 			{
+																struct Variable* v = general_lookup($1);
+																if(v==NULL)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if(v->type>=INT)
+																{
+																	free($1);
+																	free($3);
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																$$ = class_lookup(v->type, $3);
 																
+																free($1);
+																free($3);
+																if($$ == NULL){
+																	free_stack_global();
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The variable is not declared!!!\n");
+																	exit(1);
+																}
+																if($5->value.valINT >= $$->size || $5->value.valINT < 0){
+																	free_stack_global();
+																	free_const($5);
+																	free_functions();
+																	printf("Error at line: %d\n", yylineno);
+																	printf("The index is out of range!!!\n");
+																	exit(1);
+																}
+																free_const($5);
+																//printf("%d\n",$$->type);
 															}
 				| ID MEMBER_ACCESS ID '(' params_call ')'	{
 																
@@ -1027,6 +1090,69 @@ assignment		:
 
 												free_const($3);
 												free_const($8);
+											}
+				| class_access ASSIGN operations
+												{
+													
+													if($1->type != $3->type || $3->size!=0){
+														free_const($3);
+														free_stack_global();
+														free_functions();
+														printf("Error at line: %d\n", yylineno);
+														printf("The types are not compatible!!!\n");
+														exit(1);
+													}
+												
+													if($1->type == STRING){
+														$1->value.valSTRING = (char*)malloc((strlen($3->value.valSTRING) + 1) * sizeof(char));
+														strcpy($1->value.valSTRING, $3->value.valSTRING);
+													}
+													else{
+														$1->value.valINT = 0;
+														memcpy(&$1->value, &$3->value, sizeof($3->value)); 
+													}
+
+													free_const($3);
+													}
+		        | class_access ASSIGN ID '[' item ']'{
+														if($5->type != INT || $5->size != 0){
+															free_stack_global();
+															free_const($5);
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("Error: Invalid index!!!\n");
+															exit(1);
+														}
+														struct Variable* a = general_lookup($3);
+
+														if(a == NULL){
+															free_stack_global();
+															free_const($5);
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The variable is not declared or is const!!!\n");
+															exit(1);
+														}
+
+														if($1->type != a->type || a->size==0 ){
+															free_stack_global();
+															free_const($5);
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The types are not compatible!!!\n");
+															exit(1);
+														}
+													
+														if($5->value.valINT >= a->size || $5->value.valINT < 0){
+															free_stack_global();
+															free_const($5);
+															free_functions();
+															printf("Error at line: %d\n", yylineno);
+															printf("The index is out of range!!!\n");
+															exit(1);
+														}
+
+														free_const($5);
 											}
 				;
 
