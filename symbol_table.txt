@@ -16,3 +16,4 @@ Array name: p,Type: User defined;
 Variable name: p1,Type: User defined;
 Variable name: a,Type: int, Value: 0;
 Array name: x,Type: int;
+Variable name: b,Type: bool, Value: 0;

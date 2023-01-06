@@ -268,6 +268,7 @@ class_block		:
 
 class_access_var: 
 				  ID  MEMBER_ACCESS ID 						{ 
+																printf("%s\n",$1);
 																struct Variable* v = general_lookup($1);
 																if(v==NULL)
 																{
@@ -309,7 +310,7 @@ class_access_var:
 																	free_stack_global();
 																	free_functions();
 																	printf("Error at line: %d\n", yylineno);
-																	printf("The variable is not declared!!!\n");
+																	printf("1The variable is not declared!!!\n");
 																	exit(1);
 																}
 
@@ -435,7 +436,7 @@ class_access_var:
 																	free_stack_global();
 																	free_functions();
 																	printf("Error at line: %d\n", yylineno);
-																	printf("The variable is not declared!!!\n");
+																	printf("1The variable is not declared!!!\n");
 																	exit(1);
 																}
 
@@ -874,7 +875,7 @@ params 			:
 				|
        			;
 
-function_block 	: function_block assignments 
+function_block 	: function_block assignments ';'
 				| function_block declaration 	{ 
 													if(general_lookup($2->name) != NULL){
 														add_element(peek(stack_scope[curr_pos]), $2);
@@ -900,7 +901,6 @@ function_block 	: function_block assignments
 													write_to_file($2); 
 												}';'
 				| function_block function_call ';'
-				| function_block class_access_var ';'
 				| function_block class_access_fun ';'
 				| function_block while
 				| function_block for
@@ -1298,8 +1298,8 @@ constant_value	:
 								}
 				;
 
-assignments		: assignment ';'
-      			| assignments assignment ';'
+assignments		: assignment 
+      			| assignments assignment 
 				| 
       			;
 
