@@ -22,24 +22,27 @@ class CLASS
 
 pr ll(int b){
     int a = 0;
+    ll(a);
 
 }
 
 pr l1(int b[100],float h[20]){
-    int a = 0;
-
-    b[a] = b[a];
+    int a;
+    int c[100];
+    c[0] = 1;
     
 }
 
 
 fn pp(int a, string b) -> int
 {
+    
     return 1;
 }
 
 fn p1(int a, string b) -> int
 {
+    int c=pp(a,b);
     return a;
 }
 
@@ -55,7 +58,7 @@ main
 
 
     a = p1.x[1]+1;
-
+    a=p1(p[1].ll(1),"");
     p1.x[1]=x[1];
     p1.ll(2);
     bool b = p[1].x[1] > x[a];

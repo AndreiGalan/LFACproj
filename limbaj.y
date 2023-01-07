@@ -19,6 +19,8 @@ int* params;
 char** params_name; 
 int nr_params = 0;
 int* is_array;
+int nr_items=0;
+int in_main=0;
 
 void write_to_file(Variable* var);
 void write_function_to_file(Function* func);
@@ -35,9 +37,20 @@ int find_class_name(char* name)
 int find_function_name(char* name)
 {
 	for(int i = 0; i < nr_functions; ++i)
+	{
 		if(strcmp(functions[i]->name, name) == 0)
 			return 0;
+	}
+	return -1;
+}
 
+int find_function_name2(char* name)
+{
+	for(int i = 0; i <= nr_functions; ++i)
+	{
+		if(strcmp(functions[i]->name, name) == 0)
+			return 0;
+	}
 	return -1;
 }
 
@@ -47,6 +60,14 @@ void free_functions()
 		free(functions[i]->name);
 		free(functions[i]->parameters);
 		free(functions[i]);
+	}
+}
+
+void free_classes()
+{
+	for(int i = 0; i < nr_classes; ++i){
+		free(classes[i]->name);
+		free(classes[i]);
 	}
 }
 
@@ -164,7 +185,10 @@ program			: 	{
 						fp = fopen("symbol_table.txt", "w");
 						fclose(fp);
 					} 
-					prog_parts MAIN_BLOC 	{
+					prog_parts	{
+									nr_functions--;
+								} 
+					MAIN_BLOC 	{
 											printf("program corect sintactic\n");
 											struct Node* current = GlobalVar;
 
@@ -173,6 +197,7 @@ program			: 	{
 
 											free_stack_global();
 											free_functions();
+											free_classes();
 										}
 				;
 
@@ -182,6 +207,7 @@ prog_parts 		: prog_parts function
 														add_element(&GlobalVar, $2);
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("The variable is already declared!!!\n");
 														exit(1);
@@ -194,6 +220,7 @@ prog_parts 		: prog_parts function
 														add_element(&GlobalVar, $2);
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("The variable is already declared!!!\n");
 														exit(1);
@@ -213,6 +240,7 @@ class			: CLASS ID 	{
 								if(find_class_name($2) != -1){
 									free_stack_global();
 									free_functions();
+									free_classes();
 									printf("Error at line: %d\n", yylineno);
 									printf("The class is already delcared!!!\n");
 									exit(1);
@@ -232,6 +260,7 @@ class_block		:
 														if(strcmp(classes[nr_classes]->functions[i]->name, functions[nr_functions]->name) == 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The method is already delcared!!!\n");
 															exit(1);
@@ -244,6 +273,7 @@ class_block		:
 														if(strcmp(classes[nr_classes]->variables[i]->name, $2->name) == 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The variable is already delcared!!!\n");
 															exit(1);
@@ -256,6 +286,7 @@ class_block		:
 														if(strcmp(classes[nr_classes]->variables[i]->name, $2->name) == 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The variable is already delcared!!!\n");
 															exit(1);
@@ -276,6 +307,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -286,6 +318,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable has no members!!!\n");
 																	exit(1);
@@ -297,6 +330,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable must be an array!!!\n");
 																	exit(1);
@@ -309,6 +343,7 @@ class_access_var:
 																if($$ == NULL){
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("1The variable is not declared!!!\n");
 																	exit(1);
@@ -324,6 +359,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -334,6 +370,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -344,6 +381,7 @@ class_access_var:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable must be an array!!!\n");
 																	exit(1);
@@ -355,6 +393,7 @@ class_access_var:
 																if(a == NULL){
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -363,6 +402,7 @@ class_access_var:
 																	free_stack_global();
 																	free_const($5);
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The index is out of range!!!\n");
 																	exit(1);
@@ -385,6 +425,7 @@ class_access_var:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -395,6 +436,7 @@ class_access_var:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable has no members!!!\n");
 																	exit(1);
@@ -406,6 +448,7 @@ class_access_var:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not an array!!!\n");
 																	exit(1);
@@ -415,6 +458,7 @@ class_access_var:
 																	free($1);
 																	free_const($3);
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("Error: Invalid index!!!\n");
 																	exit(1);
@@ -424,6 +468,7 @@ class_access_var:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The index is out of range!!!\n");
 																	exit(1);
@@ -435,6 +480,7 @@ class_access_var:
 																if($$ == NULL){
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("1The variable is not declared!!!\n");
 																	exit(1);
@@ -452,6 +498,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -464,6 +511,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -476,6 +524,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not an array!!!\n");
 																	exit(1);
@@ -487,6 +536,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("Error: Invalid index!!!\n");
 																	exit(1);
@@ -498,6 +548,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The index is out of range!!!\n");
 																	exit(1);
@@ -509,6 +560,7 @@ class_access_var:
 																if(a == NULL){
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	free_const($3);
 																	free_const($8);
 																	printf("Error at line: %d\n", yylineno);
@@ -520,6 +572,7 @@ class_access_var:
 																	free_const($8);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The index is out of range!!!\n");
 																	exit(1);
@@ -546,6 +599,7 @@ class_access_fun:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -556,6 +610,7 @@ class_access_fun:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable has no members!!!\n");
 																	exit(1);
@@ -566,6 +621,7 @@ class_access_fun:
 																	free($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable must be an array!!!\n");
 																	exit(1);
@@ -577,6 +633,7 @@ class_access_fun:
 																		if(class->functions[i]->nr_parameters != nr_params){
 																			free_stack_global();
 																			free_functions();
+																			free_classes();
 																			printf("Error at line: %d\n", yylineno);
 																			printf("You provided the wrong number of parameters!!!\n");
 																			exit(1);
@@ -586,6 +643,7 @@ class_access_fun:
 																			if(class->functions[i]->parameters[j] != params[j]){
 																				free_stack_global();
 																				free_functions();
+																				free_classes();
 																				printf("Error at line: %d\n", yylineno);
 																				printf("The parameters are of wrong type!!!\n");
 																				exit(1);
@@ -594,6 +652,7 @@ class_access_fun:
 																				if(is_array[j]!=0 && class->functions[i]->size[j]==0 || ((is_array[j]!=0 && class->functions[i]->size[j]!=0) && class->functions[i]->size[j]<is_array[j] )){
 																					free_stack_global();
 																					free_functions();
+																					free_classes();
 																					printf("Error at line: %d\n", yylineno);
 																					printf("The parameters are of wrong type!!!\n");
 																					exit(1);
@@ -627,6 +686,7 @@ class_access_fun:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not declared!!!\n");
 																	exit(1);
@@ -638,6 +698,7 @@ class_access_fun:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable has no members!!!\n");
 																	exit(1);
@@ -649,6 +710,7 @@ class_access_fun:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The variable is not an array!!!\n");
 																	exit(1);
@@ -659,6 +721,7 @@ class_access_fun:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("Error: Invalid index!!!\n");
 																	exit(1);
@@ -669,6 +732,7 @@ class_access_fun:
 																	free_const($3);
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The index is out of range!!!\n");
 																	exit(1);
@@ -680,6 +744,7 @@ class_access_fun:
 																		if(class->functions[i]->nr_parameters != nr_params){
 																			free_stack_global();
 																			free_functions();
+																			free_classes();
 																			printf("Error at line: %d\n", yylineno);
 																			printf("You provided the wrong number of parameters!!!\n");
 																			exit(1);
@@ -689,6 +754,7 @@ class_access_fun:
 																			if(class->functions[i]->parameters[j] != params[j]){
 																				free_stack_global();
 																				free_functions();
+																				free_classes();
 																				printf("Error at line: %d\n", yylineno);
 																				printf("The parameters are of wrong type!!!\n");
 																				exit(1);
@@ -697,6 +763,7 @@ class_access_fun:
 																				if(is_array[j]!=0 && class->functions[i]->size[j]==0 || ((is_array[j]!=0 && class->functions[i]->size[j]!=0) && class->functions[i]->size[j]<is_array[j] )){
 																					free_stack_global();
 																					free_functions();
+																					free_classes();
 																					printf("Error at line: %d\n", yylineno);
 																					printf("The parameters are of wrong type!!!\n");
 																					exit(1);
@@ -731,6 +798,7 @@ function		: PROCEDURE ID
 								if(find_function_name($2) == 0){
 									free_stack_global();
 									free_functions();
+									free_classes();
 									printf("Error at line: %d\n", yylineno);
 									printf("The function is already delcared!!!\n");
 									exit(1);
@@ -749,6 +817,7 @@ function		: PROCEDURE ID
 								if(find_function_name($2) == 0){
 									free_stack_global();
 									free_functions();
+									free_classes();
 									printf("Error at line: %d\n", yylineno);
 									printf("The function is already delcared!!!\n");
 									exit(1);
@@ -759,18 +828,23 @@ function		: PROCEDURE ID
 								strcpy(functions[nr_functions]->name, $2);
 								functions[nr_functions]->nr_parameters = 0;
 							}
-							'(' params ')' ARROW TYPE '{'function_block rtn '}'		
+							'(' params ')' ARROW TYPE
+													{
+														functions[nr_functions]->return_type = $8;
+													}
+							 '{'function_block rtn '}'		
 																				{	
-																					if($11->type != $8){
+																					if($12->type != $8){
 																						free_stack_global();
 																						free_functions();
+																						free_classes();
 																						//free_const($11);
 																						printf("Error at line: %d\n", yylineno);
 																						printf("The return type is incorect!!!\n");
 																						exit(1);
 																					}
 
-																					functions[nr_functions]->return_type = $8;
+																					
 																					++nr_functions;
 																					freeStack(stack_scope[curr_pos--]);
 																				}
@@ -782,6 +856,7 @@ params 			:
 												if(general_lookup($1) != NULL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is already declared!!!\n");
 													exit(1);
@@ -829,6 +904,7 @@ params 			:
 												if(general_lookup($1) != NULL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is already declared!!!\n");
 													exit(1);
@@ -881,6 +957,7 @@ function_block 	: function_block assignments ';'
 														add_element(peek(stack_scope[curr_pos]), $2);
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("The variable is already declared!!!\n");
 														exit(1);
@@ -893,6 +970,7 @@ function_block 	: function_block assignments ';'
 														add_element(peek(stack_scope[curr_pos]), $2);
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("The variable is already declared!!!\n");
 														exit(1);
@@ -944,20 +1022,22 @@ rtn 			: RETURN item ';' {$$ = $2;}
 
 function_call   : 
 				  ID 	{
-							if(find_function_name($1) == -1){
+							if(find_function_name2($1) == -1){
 								free_stack_global();
 								free_functions();
+								free_classes();
 								printf("Error at line: %d\n", yylineno);
 								printf("The function has not been declared!!!\n");
 								exit(1);
 							}		
 						} 
 						'(' params_call ')'	{
-												for(int i = 0; i < nr_functions; ++i){
+												for(int i = 0; i <= nr_functions; ++i){
 													if(strcmp(functions[i]->name, $1) == 0){
 														if(functions[i]->nr_parameters != nr_params){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("You provided the wrong number of parameters!!!\n");
 															exit(1);
@@ -967,6 +1047,7 @@ function_call   :
 															if(functions[i]->parameters[j] != params[j]){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																printf("Error at line: %d\n", yylineno);
 																printf("The parameters are of wrong type!!!\n");
 																exit(1);
@@ -975,6 +1056,7 @@ function_call   :
 																if(is_array[j]!=0 && functions[i]->size[j]==0 || ((is_array[j]!=0 && functions[i]->size[j]!=0) && functions[i]->size[j]<is_array[j] )){
 																	free_stack_global();
 																	free_functions();
+																	free_classes();
 																	printf("Error at line: %d\n", yylineno);
 																	printf("The parameters are of wrong type!!!\n");
 																	exit(1);
@@ -1057,6 +1139,7 @@ declaration 	:
 															if($4 <= 0){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																printf("Error at line: %d\n", yylineno);
 																printf("The index cannot be negative or zero!!!\n");
 																exit(1);
@@ -1074,6 +1157,7 @@ declaration 	:
 															if((type = find_class_name($1)) == -1){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																printf("Error at line: %d\n", yylineno);
 																printf("Invalid type!!!\n");
 																exit(1);
@@ -1090,6 +1174,7 @@ declaration 	:
 															if($4 <= 0){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																printf("Error at line: %d\n", yylineno);
 																printf("The index cannot be negative or zero!!!\n");
 																exit(1);
@@ -1099,6 +1184,7 @@ declaration 	:
 															if((type = find_class_name($1)) == -1){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																printf("Error at line: %d\n", yylineno);
 																printf("Invalid type!!!\n");
 																exit(1);
@@ -1119,6 +1205,7 @@ definition  	:
 															if($2 != $5->type || $5->size!=0){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																free_const($5);
 																printf("Error at line: %d\n", yylineno);
 																printf("The types are incompatible!!!\n");
@@ -1153,6 +1240,7 @@ definition  	:
 															if($1 != $4->type || $4->size!=0){
 																free_stack_global();
 																free_functions();
+																free_classes();
 																free_const($4);
 																printf("eroare la linia:%d\n", yylineno);
 																printf("The types are incompatible!!!\n");
@@ -1187,6 +1275,7 @@ definition  	:
 														if($5 <= 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The index cannot be negative or zero!!!\n");
 															exit(1);
@@ -1206,6 +1295,7 @@ definition  	:
 														if($4 <= 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The index cannot be negative or zero!!!\n");
 															exit(1);
@@ -1213,6 +1303,14 @@ definition  	:
 														array_type = $1;
 													} ASSIGN '{' arr_item'}' 
 																				{
+																					if(nr_items > $4){
+																						free_stack_global();
+																						free_functions();
+																						free_classes();
+																						printf("Error at line: %d\n", yylineno);
+																						printf("There are more elements in the array than you declared!!!\n");
+																						exit(1);
+																					}
 																					$$ = (struct Variable*)malloc(sizeof(struct Variable));
 																					$$->name = $2;
 																					$$->type = $1;
@@ -1220,6 +1318,7 @@ definition  	:
 																					$$->value.valINT = 0;
 																					$$->size = $4;
 																					array_type = 0;
+																					nr_items=0;
 																				}
 				;
 
@@ -1228,21 +1327,25 @@ arr_item		:
 												if($1->type != array_type){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													printf("Error at line: %d\n", yylineno);
 													printf("The elements of the array are not as the same type as the array!!!\n");
 													exit(1);
 												}
+												nr_items++;
 											}
 				| operations				{
 												if($1->type != array_type){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													printf("Error at line: %d\n", yylineno);
 													printf("The elements of the array are not as the same type as the array!!!\n");
 													exit(1);
 												}
+												nr_items++;
 											}
 				|
 				;
@@ -1312,6 +1415,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -1321,6 +1425,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -1342,6 +1447,7 @@ assignment		:
 													free_stack_global();
 													free_const($5);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("Error: Invalid index!!!\n");
 													exit(1);
@@ -1354,6 +1460,7 @@ assignment		:
 													free_stack_global();
 													free_const($5);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -1363,6 +1470,7 @@ assignment		:
 													free_stack_global();
 													free_const($5);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -1372,6 +1480,7 @@ assignment		:
 													free_stack_global();
 													free_const($5);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The index is out of range!!!\n");
 													exit(1);
@@ -1385,6 +1494,7 @@ assignment		:
 												if(v == NULL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
@@ -1393,6 +1503,7 @@ assignment		:
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot increment this variable!!!\n");
 													exit(1);
@@ -1412,6 +1523,7 @@ assignment		:
 												if(v == NULL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared!!!\n");
 													exit(1);
@@ -1420,6 +1532,7 @@ assignment		:
 												if((v->type != INT) && (v->type != CHAR) && (v->type != FLOAT) && (v->is_const == 1)){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("Cannot decrement this variable!!!\n");
 													exit(1);
@@ -1440,6 +1553,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("Error: Invalid index!!!\n");
 													exit(1);
@@ -1451,6 +1565,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
 													exit(1);
@@ -1461,6 +1576,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -1471,6 +1587,7 @@ assignment		:
 													free_const($3);
 													free_stack_global();
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The index is out of range!!!\n");
 													exit(1);
@@ -1483,6 +1600,7 @@ assignment		:
 												if($3->type != INT || $3->size != 0 || $8->type != INT || $8->size != 0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													free_const($8);
 													printf("Error at line: %d\n", yylineno);
@@ -1496,6 +1614,7 @@ assignment		:
 												if(a1 == NULL || a2 == NULL || a1->is_const == 1){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													free_const($8);
 													printf("Error at line: %d\n", yylineno);
@@ -1508,6 +1627,7 @@ assignment		:
 													free_const($3);
 													free_const($8);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
 													exit(1);
@@ -1518,6 +1638,7 @@ assignment		:
 													free_const($3);
 													free_const($8);
 													free_functions();
+													free_classes();
 													printf("Error at line: %d\n", yylineno);
 													printf("The index is out of range!!!\n");
 													exit(1);
@@ -1533,6 +1654,7 @@ assignment		:
 														free_const($3);
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("The types are not compatible!!!\n");
 														exit(1);
@@ -1554,6 +1676,7 @@ assignment		:
 															free_stack_global();
 															free_const($5);
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("Error: Invalid index!!!\n");
 															exit(1);
@@ -1564,6 +1687,7 @@ assignment		:
 															free_stack_global();
 															free_const($5);
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The variable is not declared or is const!!!\n");
 															exit(1);
@@ -1573,6 +1697,7 @@ assignment		:
 															free_stack_global();
 															free_const($5);
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The types are not compatible!!!\n");
 															exit(1);
@@ -1582,6 +1707,7 @@ assignment		:
 															free_stack_global();
 															free_const($5);
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("The index is out of range!!!\n");
 															exit(1);
@@ -1635,6 +1761,7 @@ operations 		: item 							{$$ = $1;}
 													if(compatible == 0){
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be added!!!\n");
         												exit(1);
@@ -1669,6 +1796,7 @@ operations 		: item 							{$$ = $1;}
 													if(compatible == 0){
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be subtracted!!!\n");
         												exit(1);
@@ -1701,6 +1829,7 @@ operations 		: item 							{$$ = $1;}
 														if(compatible == 0){
 															free_stack_global();
 															free_functions();
+															free_classes();
 															printf("Error at line: %d\n", yylineno);
 															printf("These types can't be divided!!!\n");
 															exit(1);
@@ -1735,6 +1864,7 @@ operations 		: item 							{$$ = $1;}
 													if(compatible == 0){
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be multiplyed!!!\n");
         												exit(1);
@@ -1764,6 +1894,7 @@ operations 		: item 							{$$ = $1;}
 													if(compatible == 0){
 														free_stack_global();
 														free_functions();
+														free_classes();
 														printf("Error at line: %d\n", yylineno);
 														printf("These types can't be divided!!!\n");
         												exit(1);
@@ -1774,6 +1905,7 @@ operations 		: item 							{$$ = $1;}
 													if($1->type == -1){
 														free_stack_global();
 														free_functions();
+														free_classes();
 														free_const($1);
 														printf("Error at line: %d\n", yylineno);
 														printf("Procedures don't return any value!!!\n");
@@ -1799,6 +1931,7 @@ bool_expresion	:
 												if($1->type != BOOL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													printf("Error at line: %d\n", yylineno);
 													printf("Thise variables is not of type bool!!!\n");
@@ -1812,6 +1945,7 @@ bool_expresion	:
 												if($1->type != $3->type || $1->size != 0 || $3->size != 0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1834,6 +1968,7 @@ bool_expresion	:
 												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1858,6 +1993,7 @@ bool_expresion	:
 													
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1880,6 +2016,7 @@ bool_expresion	:
 												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1902,6 +2039,7 @@ bool_expresion	:
 												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1924,6 +2062,7 @@ bool_expresion	:
 												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($1);
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
@@ -1951,6 +2090,7 @@ item            :
 						if($$ == NULL){
 							free_stack_global();
 							free_functions();
+							free_classes();
 							printf("Error at line: %d\n", yylineno);
 							printf("The variable is not declared!!!\n");
 							exit(1);
@@ -1964,6 +2104,7 @@ item            :
 												if(a == NULL){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("The variable is not declared or is const!!!\n");
@@ -1973,6 +2114,7 @@ item            :
 												if(a->size==0 ){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("The types are not compatible!!!\n");
@@ -1982,6 +2124,7 @@ item            :
 												if($3->type != INT){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("The index is of the wrong type!!!\n");
@@ -1991,6 +2134,7 @@ item            :
 												if($3->value.valINT >= a->size || $3->value.valINT < 0){
 													free_stack_global();
 													free_functions();
+													free_classes();
 													free_const($3);
 													printf("Error at line: %d\n", yylineno);
 													printf("The index is out of range!!!\n");
