@@ -6,3 +6,4 @@
 !test
 !includes.h
 !stack.h
+!asp_tree.c
