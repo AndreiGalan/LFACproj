@@ -27,10 +27,8 @@ pr ll(int b){
 }
 
 pr l1(int b[100],float h[20]){
-    int a;
     int c[100];
-    c[0] = 1;
-    
+    c[1] = 1;
 }
 
 
@@ -53,7 +51,7 @@ main
     CLASS p[100];
     CLASS p1;
     int a;
-    int x[2];
+    int x[100];
 
 
 
