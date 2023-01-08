@@ -1,66 +1,8 @@
-int i = 1000;
-int j = i;
-
-
-
-string k = "salut";
-
-class CLASS
-{
-    int i = 0;
-    int j = 0;
-    int x[100];
-
-    fn ll(int b) -> int
-    {
-        int a = 0;
-        return a;
-    }
-
-}
-
-
-pr ll(int b){
-    int a = 0;
-    ll(a);
-
-}
-
-pr l1(int b[100],float h[20]){
-    int c[100];
-    c[1] = 1;
-}
-
-
-fn pp(int a, string b) -> int
-{
-    
-    return 1;
-}
-
-fn p1(int a, string b) -> int
-{
-    int c=pp(a,b);
-    return a;
-}
-
+int iii = 1000;
+int jjj = 1000;
 
 
 main
 {
-    CLASS p[100];
-    CLASS p1;
-    int a;
-    int x[100];
-
-
-
-    a = p1.x[1]+1;
-    a=p1(p[1].ll(1),"");
-    p1.x[1]=x[1];
-    p1.ll(2);
-    bool b = p[1].x[1] > x[a];
-
-
-    TypeOf(x[1]+p1.i);
+    Eval(iii + jjj);
 }

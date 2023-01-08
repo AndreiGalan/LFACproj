@@ -3,6 +3,7 @@
 #include "includes.h"
 #include "stack.h"
 #include <string.h>
+#include "ast_tree.c"
 extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
@@ -135,6 +136,9 @@ void error_message(const char* errorMessage)
 	exit(1);
 }
 
+
+struct ASTNode* ast;
+
 %}
 
 %union 
@@ -149,7 +153,7 @@ void error_message(const char* errorMessage)
 }
 
 
-%token 	MAIN CONST
+%token 	MAIN CONST EVAL TYPEOF
 		INT FLOAT STRING CHAR BOOL
 		PROCEDURE FUNCTION ARROW RETURN
 		IF ELSE WHILE FOR
@@ -162,7 +166,7 @@ void error_message(const char* errorMessage)
 %token <valINT> INT_CONST
 %token <valFLOAT> FLOAT_CONST
 %token <valCHAR> CHAR_CONST
-%token <valSTRING> STRING_CONST ID TYPEOF
+%token <valSTRING> STRING_CONST ID
 %token <valBOOL> BOOL_CONST
 
 %type <variable> declaration definition constant_value operations item rtn function_call class_access_var class_access_fun
@@ -194,6 +198,14 @@ program			: 	{
 									nr_functions--;
 								} 
 					MAIN_BLOC 	{
+											struct AstNode* ast1 = build_AST("iii", NULL, NULL, IDENTIFIER);
+											struct AstNode* ast2 = build_AST("jjj", NULL, NULL, IDENTIFIER);
+
+											struct AstNode* ast3 = build_AST("*", ast1, ast2, OP);
+											printf("%d\n", eval_AST(ast3));
+
+											free_AST(ast3);
+
 											printf("program corect sintactic\n");
 											struct Node* current = GlobalVar;
 
@@ -203,6 +215,8 @@ program			: 	{
 											free_stack_global();
 											free_functions();
 											free_classes();
+
+											
 										}
 				;
 
@@ -733,6 +747,7 @@ function_block 	: function_block assignments ';'
 									printf("Type: %s[%d];\n", name, $4->size);
 
 							}
+				| function_block EVAL {free_AST(ast); ast = NULL;} '(' operations ')' ';' {printf("%d\n", eval_AST(ast));}
 				|
 				;
 
@@ -1611,7 +1626,8 @@ while  			: WHILE '(' bool_statement ')' {push(stack_scope[curr_pos]);} '{' func
 																									 }
 				;
 
-for				: FOR '(' definition ';' bool_statement ';' assignment ')' {push(stack_scope[curr_pos]);} '{' function_block '}'{ 	
+for				: 
+				  FOR '(' definition ';' bool_statement ';' assignment ')' {push(stack_scope[curr_pos]);} '{' function_block '}'{ 	
 																																	struct Node* n = pop(stack_scope[curr_pos]);
 																																	delete_list(&n);
 																																}
@@ -1621,7 +1637,8 @@ for				: FOR '(' definition ';' bool_statement ';' assignment ')' {push(stack_sc
 																																}
 				;
 
-if 				: IF '(' bool_statement ')' {push(stack_scope[curr_pos]);} '{' function_block '}' 	{ 	
+if 				: 
+				  IF '(' bool_statement ')' {push(stack_scope[curr_pos]);} '{' function_block '}' 	{ 	
 																										struct Node* n = pop(stack_scope[curr_pos]);
 																										delete_list(&n);
 																									}

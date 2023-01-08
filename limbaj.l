@@ -9,6 +9,7 @@
 %%
 "main" {return MAIN;}
 "TypeOf" {return TYPEOF;}
+"Eval" {return EVAL;}
 "const" {return CONST;}
 "int" {return INT; }
 "float" {return FLOAT; }
