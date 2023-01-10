@@ -74,13 +74,13 @@ void free_AST(AstNode* ast) {
 }
 
 int eval_AST(AstNode* ast) {
-    if (!ast) return 0;
+    if (!ast) 
+        return 0;
 
     switch (ast->type) {
         case NUMBER:
             return ast->value.number;
         case IDENTIFIER:
-            printf("%d\n", general_lookup(ast->value.identifier)->value.valINT);
             return (general_lookup(ast->value.identifier)->value.valINT);
         case OP:
             switch (ast->value.op) {
@@ -92,9 +92,11 @@ int eval_AST(AstNode* ast) {
                     return eval_AST(ast->left) * eval_AST(ast->right);
                 case '/':
                     return eval_AST(ast->left) / eval_AST(ast->right);
+                case '%':
+                    return eval_AST(ast->left) % eval_AST(ast->right);
                 default:
                     fprintf(stderr, "Error: Unsupported operator\n");
-                return 0;
+                    return 0;
             }
         default:
             return 0;

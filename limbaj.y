@@ -137,7 +137,10 @@ void error_message(const char* errorMessage)
 }
 
 
-struct ASTNode* ast;
+struct AST_VAR{
+	struct Variable* variable;
+	struct AstNode* ast;
+};
 
 %}
 
@@ -150,6 +153,7 @@ struct ASTNode* ast;
   int valBOOL;
   union Value* valEXPR;
   struct Variable* variable;
+  struct AST_VAR* ast_var;
 }
 
 
@@ -169,9 +173,10 @@ struct ASTNode* ast;
 %token <valSTRING> STRING_CONST ID
 %token <valBOOL> BOOL_CONST
 
-%type <variable> declaration definition constant_value operations item rtn function_call class_access_var class_access_fun
+%type <variable> declaration definition constant_value rtn function_call class_access_var class_access_fun
 %type <valINT> TYPE
 %type <valBOOL> bool_expresion bool_statement
+%type <ast_var> item operations
 
 %start program
 
@@ -198,14 +203,6 @@ program			: 	{
 									nr_functions--;
 								} 
 					MAIN_BLOC 	{
-											struct AstNode* ast1 = build_AST("iii", NULL, NULL, IDENTIFIER);
-											struct AstNode* ast2 = build_AST("jjj", NULL, NULL, IDENTIFIER);
-
-											struct AstNode* ast3 = build_AST("*", ast1, ast2, OP);
-											printf("%d\n", eval_AST(ast3));
-
-											free_AST(ast3);
-
 											printf("program corect sintactic\n");
 											struct Node* current = GlobalVar;
 
@@ -214,9 +211,7 @@ program			: 	{
 
 											free_stack_global();
 											free_functions();
-											free_classes();
-
-											
+											free_classes();		
 										}
 				;
 
@@ -306,11 +301,11 @@ class_access_var:
 																	error_message("The variable must be an array!!!\n");
 																}
 																if($$ == NULL){
-																	printf("Error at line: %d\n", yylineno);
 																	error_message("The variable is not declared!!!\n");
 																}
 															}
 				| ID MEMBER_ACCESS ID '[' item ']' 			{
+																free_AST($5->ast);
 																struct Variable* v = general_lookup($1);
 																free($1);
 
@@ -332,8 +327,8 @@ class_access_var:
 																if(a == NULL){
 																	error_message("The variable is not declared!!!\n");
 																}
-																if($5->value.valINT >= a->size || $5->value.valINT < 0){
-																	free_const($5);
+																if($5->variable->value.valINT >= a->size || $5->variable->value.valINT < 0){
+																	free_const($5->variable);
 																	error_message("The index is out of range!!!\n");
 																}
 
@@ -344,14 +339,15 @@ class_access_var:
 																$$->size = 0;
 																$$->value.valINT = 0;
 
-																free_const($5);
+																free_const($5->variable);
 															}
 				| ID '[' item ']'  MEMBER_ACCESS ID 		{ 
+																free_AST($3->ast);
 																struct Variable* v = general_lookup($1);
 																free($1);
 																if(v==NULL){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable is not declared!!!\n");
 																}
 
@@ -359,68 +355,70 @@ class_access_var:
 																free($6);
 
 																if(v->type>=INT){
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable has no members!!!\n");
 																}
 																if(v->size==0){
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable is not an array!!!\n");
 																}
-																if($3->type != INT || $3->size != 0){
-																	free_const($3);
+																if($3->variable->type != INT || $3->variable->size != 0){
+																	free_const($3->variable);
 																	error_message("Error: Invalid index!!!\n");
 																}
-																if($3->value.valINT >= v->size || $3->value.valINT < 0){
-																	free_const($3);
+																if($3->variable->value.valINT >= v->size || $3->variable->value.valINT < 0){
+																	free_const($3->variable);
 																	error_message("The index is out of range!!!\n");
 																}
 																
-																free_const($3);
+																free_const($3->variable);
 																if($$ == NULL){
 																	error_message("The variable is not declared!!!\n");
 																}
 															}
 				| ID '[' item ']' MEMBER_ACCESS ID '[' item ']' 			{
+																free_AST($3->ast);
+																free_AST($8->ast);
 																struct Variable* v = general_lookup($1);
 																free($1);
 																if(v==NULL){
 																	free($6);
-																	free_const($3);
-																	free_const($8);
+																	free_const($3->variable);
+																	free_const($8->variable);
 																	error_message("The variable is not declared!!!\n");
 																}
 																struct Variable* a = class_lookup(v->type, $6);
 																free($6);
 
 																if(v->type>=INT){
-																	free_const($3);
-																	free_const($8);
+																	free_const($3->variable);
+																	free_const($8->variable);
 																	error_message("The variable is not declared!!!\n");
 																}
 																if(v->size==0){
-																	free_const($3);
-																	free_const($8);
+																	free_const($3->variable);
+																	free_const($8->variable);
 																	error_message("The variable is not an array!!!\n");
 																}
-																if($3->type != INT || $3->size != 0){
-																	free_const($3);
-																	free_const($8);
+																if($3->variable->type != INT || $3->variable->size != 0){
+																	free_const($3->variable);
+																	free_const($8->variable);
 																	error_message("Error: Invalid index!!!\n");
 																}
-																if($3->value.valINT >= v->size || $3->value.valINT < 0){
-																	free_const($3);
-																	free_const($8);
+																if($3->variable->value.valINT >= v->size || $3->variable->value.valINT < 0){
+																	free_const($3->variable);
+																	free_const($8->variable);
 																	error_message("The index is out of range!!!\n");
 																}
-																free_const($3);
+																free_const($3->variable);
 																
 
 																if(a == NULL){
-																	free_const($8);
+																	free_const($8->variable);
 																	error_message("The variable is not declared!!!\n");
 																}
-																if($8->value.valINT >= a->size || $8->value.valINT < 0){
-																	free_const($8);
+																if($8->variable->value.valINT >= a->size || $8->variable->value.valINT < 0){
+																	free_const($8->variable);
 																	error_message("The index is out of range!!!\n");
 																}
 
@@ -431,7 +429,7 @@ class_access_var:
 																$$->size = 0;
 																$$->value.valINT = 0;
 
-																free_const($8);
+																free_const($8->variable);
 															}
 				;
 
@@ -489,34 +487,35 @@ class_access_fun:
 																free($3);
 															}
 				| ID '[' item ']' MEMBER_ACCESS ID '(' params_call ')'	{
+																free_AST($3->ast);
 																struct Variable* v = general_lookup($1);
 																free($1);
 																if(v==NULL){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable is not declared!!!\n");
 																}
 																if(v->type>=INT){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable has no members!!!\n");
 																}
 																if(v->size==0){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The variable is not an array!!!\n");
 																}
-																if($3->type != INT || $3->size != 0){
+																if($3->variable->type != INT || $3->variable->size != 0){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("Error: Invalid index!!!\n");
 																}
-																if($3->value.valINT >= v->size || $3->value.valINT < 0){
+																if($3->variable->value.valINT >= v->size || $3->variable->value.valINT < 0){
 																	free($6);
-																	free_const($3);
+																	free_const($3->variable);
 																	error_message("The index is out of range!!!\n");
 																}
-																free_const($3);
+																free_const($3->variable);
 
 																struct Class* class = classes[v->type];
 																for(int i = 0; i < class->nr_functions; ++i){
@@ -718,8 +717,9 @@ function_block 	: function_block assignments ';'
 				| function_block if
 				| function_block TYPEOF '(' operations ')' ';' 	
 							{
+								//free_AST($4->ast);
 								char* name;
-								switch ($4->type)
+								switch ($4->variable->type)
 								{
 									case INT:
 										name = (char*)"int";
@@ -737,21 +737,21 @@ function_block 	: function_block assignments ';'
 										name = (char*)"bool";
 										break;
 									default:
-										name = classes[$4->type]->name;
+										name = classes[$4->variable->type]->name;
 										break;
 								}
 
-								if($4->size == 0)
+								if($4->variable->size == 0)
 									printf("Type: %s;\n", name);
 								else
-									printf("Type: %s[%d];\n", name, $4->size);
+									printf("Type: %s[%d];\n", name, $4->variable->size);
 
 							}
-				| function_block EVAL {free_AST(ast); ast = NULL;} '(' operations ')' ';' {printf("%d\n", eval_AST(ast));}
+				| function_block EVAL '(' operations ')' ';' {printf("Eval output: %d;\n", eval_AST($4->ast));}
 				|
 				;
 
-rtn 			: RETURN item ';' {$$ = $2;}
+rtn 			: RETURN item ';' {$$ = $2->variable; free_AST($2->ast);}
 				;
 
 function_call   : 
@@ -797,6 +797,7 @@ function_call   :
 
 params_call     : operations ',' params_call 
 											{
+												free_AST($1->ast);
 												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
 												int* temp2 = (int*)malloc(sizeof(int) * (nr_params+1));
 												if(nr_params > 0)
@@ -804,12 +805,12 @@ params_call     : operations ',' params_call
 													memcpy(temp, params, sizeof(int) * nr_params);
 													memcpy(temp2, is_array, sizeof(int) * nr_params);
 												}
-												temp[nr_params++] = $1->type;
-												if($1->size!=0)
-													temp2[nr_params-1]=$1->size;
+												temp[nr_params++] = $1->variable->type;
+												if($1->variable->size!=0)
+													temp2[nr_params-1]=$1->variable->size;
 												else
-													temp2[nr_params-1]=$1->size;
-												free_const($1);
+													temp2[nr_params-1]=$1->variable->size;
+												free_const($1->variable);
 
 												free(params);
 												free(is_array);
@@ -817,6 +818,7 @@ params_call     : operations ',' params_call
 												is_array=temp2;
 											}
 				| operations 				{
+												free_AST($1->ast);
 												int* temp = (int*)malloc(sizeof(int) * (nr_params+1));
 												int* temp2 = (int*)malloc(sizeof(int) * (nr_params+1));
 												if(nr_params > 0)
@@ -824,12 +826,12 @@ params_call     : operations ',' params_call
 													memcpy(temp, params, sizeof(int) * nr_params);
 													memcpy(temp2, is_array, sizeof(int) * nr_params);
 												}
-												temp[nr_params++] = $1->type;
-												if($1->size!=0)
-													temp2[nr_params-1]=$1->size;
+												temp[nr_params++] = $1->variable->type;
+												if($1->variable->size!=0)
+													temp2[nr_params-1]=$1->variable->size;
 												else
-													temp2[nr_params-1]=$1->size;
-												free_const($1);
+													temp2[nr_params-1]=$1->variable->size;
+												free_const($1->variable);
 
 												free(params);
 												free(is_array);
@@ -896,14 +898,14 @@ declaration 	:
 definition  	: 
 				  CONST TYPE ID ASSIGN operations 		{
 																	
-															if($2 != $5->type || $5->size!=0){
+															if($2 != $5->variable->type || $5->variable->size!=0){
 																free($3);
-																free_const($5);
+																free_const($5->variable);
 																error_message("The types are incompatible!!!\n");
 															}
 
-															if(strcmp($5->name, "@const") == 0){
-																$$ = $5;
+															if(strcmp($5->variable->name, "@const") == 0){
+																$$ = $5->variable;
 																$$->name = $3;
 																$$->is_const = 1;
 															}
@@ -914,27 +916,30 @@ definition  	:
 																$$->is_const = 1;
 
 																if($2 == STRING){
-																	$$->value.valSTRING = (char*)malloc((strlen($5->value.valSTRING) + 1) * sizeof(char));
-																	strcpy($$->value.valSTRING, $5->value.valSTRING);
+																	$$->value.valSTRING = (char*)malloc((strlen($5->variable->value.valSTRING) + 1) * sizeof(char));
+																	strcpy($$->value.valSTRING, $5->variable->value.valSTRING);
+																}
+																if($2 == INT){
+																	$$->value.valINT = eval_AST($5->ast);
 																}
 																else{
 																	$$->value.valINT = 0;
-																	memcpy(&$$->value, &$5->value, sizeof($5->value)); 
+																	memcpy(&$$->value, &$5->variable->value, sizeof($5->variable->value)); 
 																}
 															}
 
 															$$->size = 0;
-															free_const($5);
+															free_const($5->variable);
 														}
 				| TYPE ID ASSIGN operations				{
-															if($1 != $4->type || $4->size!=0){
+															if($1 != $4->variable->type || $4->variable->size!=0){
 																free($2);
-																free_const($4);
+																free_const($4->variable);
 																error_message("The types are incompatible!!!\n");
 															}
 
-															if(strcmp($4->name, "@const") == 0){
-																$$ = $4;
+															if(strcmp($4->variable->name, "@const") == 0){
+																$$ = $4->variable;
 																$$->name = $2;
 																$$->is_const = 0;
 															}
@@ -945,16 +950,19 @@ definition  	:
 																$$->is_const = 0;
 
 																if($1 == STRING){
-																	$$->value.valSTRING = (char*)malloc((strlen($4->value.valSTRING) + 1) * sizeof(char));
-																	strcpy($$->value.valSTRING, $4->value.valSTRING);
+																	$$->value.valSTRING = (char*)malloc((strlen($4->variable->value.valSTRING) + 1) * sizeof(char));
+																	strcpy($$->value.valSTRING, $4->variable->value.valSTRING);
+																}
+																if($1 == INT){
+																	$$->value.valINT = eval_AST($4->ast);
 																}
 																else{
 																	$$->value.valINT = 0;
-																	memcpy(&$$->value, &$4->value, sizeof($4->value)); 
+																	memcpy(&$$->value, &$4->variable->value, sizeof($4->variable->value)); 
 																}
 															}
 															
-															free_const($4);
+															free_const($4->variable);
 															$$->size = 0;
 														}
 				| CONST TYPE ID '[' INT_CONST ']' 	{
@@ -998,15 +1006,15 @@ definition  	:
 
 arr_item		:
 				  operations ',' arr_item 	{
-												if($1->type != array_type){
-													free_const($1);
+												if($1->variable->type != array_type){
+													free_const($1->variable);
 													error_message("The elements of the array are not as the same type as the array!!!\n");
 												}
 												nr_items++;
 											}
 				| operations				{
-												if($1->type != array_type){
-													free_const($1);
+												if($1->variable->type != array_type){
+													free_const($1->variable);
 													error_message("The elements of the array are not as the same type as the array!!!\n");
 												}
 												nr_items++;
@@ -1032,6 +1040,7 @@ constant_value	:
 									strcpy($$->name, "@const");
 									$$->type = INT;
 									$$->value.valINT = $1;
+									$$->size = 0;
 								}
 				| FLOAT_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -1039,6 +1048,7 @@ constant_value	:
 									strcpy($$->name, "@const");
 									$$->type = FLOAT;
 									$$->value.valFLOAT = $1;
+									$$->size = 0;
 								}
 				| STRING_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -1048,6 +1058,7 @@ constant_value	:
 									$$->value.valSTRING = (char*)malloc((strlen($1) - 1) * sizeof(char));
 									$1[strlen($1) - 1] = '\0';
 									strcpy($$->value.valSTRING, $1 + 1);
+									$$->size = 0;
 								}
 				| CHAR_CONST	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -1055,6 +1066,7 @@ constant_value	:
 									strcpy($$->name, "@const");
 									$$->type = CHAR;
 									$$->value.valCHAR = $1;
+									$$->size = 0;
 								}
 				| BOOL_CONST 	{
 									$$ = (struct Variable*)malloc(sizeof(struct Variable));
@@ -1062,6 +1074,7 @@ constant_value	:
 									strcpy($$->name, "@const");
 									$$->type = BOOL;
 									$$->value.valBOOL = $1;
+									$$->size = 0;
 								}
 				;
 
@@ -1077,29 +1090,33 @@ assignment		:
 												free($1);
 
 												if(v == NULL || v->is_const == 1){
-													free_const($3);
+													free_const($3->variable);
 													error_message("The variable is not declared or is const!!!\n");
 												}
 
-												if(v->type != $3->type || $3->size!=0 || v->size!=0){
-													free_const($3);
+												if(v->type != $3->variable->type || $3->variable->size!=0 || v->size!=0){
+													free_const($3->variable);
 													error_message("The types are not compatible!!!\n");
 												}
 											
 												if(v->type == STRING){
-													v->value.valSTRING = (char*)malloc((strlen($3->value.valSTRING) + 1) * sizeof(char));
-													strcpy(v->value.valSTRING, $3->value.valSTRING);
+													v->value.valSTRING = (char*)malloc((strlen($3->variable->value.valSTRING) + 1) * sizeof(char));
+													strcpy(v->value.valSTRING, $3->variable->value.valSTRING);
+												}
+												else if(v->type == INT){
+													v->value.valINT = eval_AST($3->ast);
 												}
 												else{
 													v->value.valINT = 0;
-													memcpy(&v->value, &$3->value, sizeof($3->value)); 
+													memcpy(&v->value, &$3->variable->value, sizeof($3->variable->value)); 
 												}
 
-												free_const($3);
+												free_const($3->variable);
 											}	
 				| ID ASSIGN ID '[' item ']'	{
-												if($5->type != INT || $5->size != 0){
-													free_const($5);
+												free_AST($5->ast);
+												if($5->variable->type != INT || $5->variable->size != 0){
+													free_const($5->variable);
 													error_message("Error: Invalid index!!!\n");
 												}
 
@@ -1110,21 +1127,21 @@ assignment		:
 												free($3);
 
 												if(v == NULL || a == NULL || v->is_const == 1){
-													free_const($5);
+													free_const($5->variable);
 													error_message("The variable is not declared or is const!!!\n");
 												}
 
 												if(v->type != a->type || a->size==0 || v->size!=0){
-													free_const($5);
+													free_const($5->variable);
 													error_message("The types are not compatible!!!\n");
 												}
 											
-												if($5->value.valINT >= a->size || $5->value.valINT < 0){
-													free_const($5);
+												if($5->variable->value.valINT >= a->size || $5->variable->value.valINT < 0){
+													free_const($5->variable);
 													error_message("The index is out of range!!!\n");
 												}
 
-												free_const($5);
+												free_const($5->variable);
 											}
 				| ID INCREMENT				{
 												struct Variable* v = general_lookup($1);
@@ -1167,11 +1184,11 @@ assignment		:
 											}
 				| ID '[' item ']' ASSIGN operations 
 											{
-												if($3->type != INT || $3->size != 0){
+												free_AST($3->ast);
+												if($3->variable->type != INT || $3->variable->size != 0){
 													free($1);
-													free_const($6);
-													free_const($3);
-													printf("%d\n", $3->size);
+													free_const($6->variable);
+													free_const($3->variable);
 													error_message("Error: Invalid index!!!\n");
 												}
 
@@ -1179,31 +1196,33 @@ assignment		:
 												free($1);
 
 												if(v == NULL || v->is_const == 1){
-													free_const($6);
-													free_const($3);
+													free_const($6->variable);
+													free_const($3->variable);
 													error_message("The variable is not declared or is const!!!\n");
 												}
-												if(v->type != $6->type || $6->size!=0){
-													free_const($6);
-													free_const($3);
+												if(v->type != $6->variable->type || $6->variable->size!=0){
+													free_const($6->variable);
+													free_const($3->variable);
 													error_message("The types are not compatible!!!\n");
 												}
-												if($3->value.valINT >= v->size || $3->value.valINT < 0){
-													free_const($6);
-													free_const($3);
+												if($3->variable->value.valINT >= v->size || $3->variable->value.valINT < 0){
+													free_const($6->variable);
+													free_const($3->variable);
 													error_message("The index is out of range!!!\n");
 												}
 
-												free_const($6);
-												free_const($3);
+												free_const($6->variable);
+												free_const($3->variable);
 											}
 				| ID '[' item ']' ASSIGN ID '[' item ']'
 											{
-												if($3->type != INT || $3->size != 0 || $8->type != INT || $8->size != 0){
+												free_AST($3->ast);
+												free_AST($8->ast);
+												if($3->variable->type != INT || $3->variable->size != 0 || $8->variable->type != INT || $8->variable->size != 0){
 													free($1);
 													free($6);
-													free_const($3);
-													free_const($8);
+													free_const($3->variable);
+													free_const($8->variable);
 													error_message("Error: Invalid index!!!\n");
 												}
 
@@ -1213,108 +1232,130 @@ assignment		:
 												free($6);
 
 												if(a1 == NULL || a2 == NULL || a1->is_const == 1){
-													free_const($3);
-													free_const($8);
+													free_const($3->variable);
+													free_const($8->variable);
 													error_message("The variable is not declared or is const!!!\n");
 												}
 												if(a1->type != a2->type){
-													free_const($3);
-													free_const($8);
+													free_const($3->variable);
+													free_const($8->variable);
 													error_message("The types are not compatible!!!\n");
 												}
-												if($3->value.valINT >= a1->size || $3->value.valINT < 0 || $8->value.valINT >= a2->size || $8->value.valINT < 0){
-													free_const($3);
-													free_const($8);
+												if($3->variable->value.valINT >= a1->size || $3->variable->value.valINT < 0 || $8->variable->value.valINT >= a2->size || $8->variable->value.valINT < 0){
+													free_const($3->variable);
+													free_const($8->variable);
 													error_message("The index is out of range!!!\n");
 												}
 
-												free_const($3);
-												free_const($8);
+												free_const($3->variable);
+												free_const($8->variable);
 											}
 				| class_access_var ASSIGN operations
 												{	
-													if($1->type != $3->type || $3->size!=0){
-														free_const($3);
+													if($1->type != $3->variable->type || $3->variable->size!=0){
+														free_const($3->variable);
+														free_AST($3->ast);
 														error_message("The types are not compatible!!!\n");
 													}
 												
 													if($1->type == STRING){
-														$1->value.valSTRING = (char*)malloc((strlen($3->value.valSTRING) + 1) * sizeof(char));
-														strcpy($1->value.valSTRING, $3->value.valSTRING);
+														$1->value.valSTRING = (char*)malloc((strlen($3->variable->value.valSTRING) + 1) * sizeof(char));
+														strcpy($1->value.valSTRING, $3->variable->value.valSTRING);
+													}
+													else if($1->type == INT){
+														$1->value.valINT = eval_AST($3->ast);
 													}
 													else{
 														$1->value.valINT = 0;
-														memcpy(&$1->value, &$3->value, sizeof($3->value)); 
+														memcpy(&$1->value, &$3->variable->value, sizeof($3->variable->value)); 
 													}
 
-													free_const($3);
+													free_const($3->variable);
+													free_AST($3->ast);
 												}
-		        | class_access_var ASSIGN ID '[' item ']'{
-														if($5->type != INT || $5->size != 0){
-															free_const($5);
+		        | class_access_var ASSIGN ID '[' item ']'
+											{
+														free_AST($5->ast);
+														if($5->variable->type != INT || $5->variable->size != 0){
+															free_const($5->variable);
 															error_message("Error: Invalid index!!!\n");
 														}
 														struct Variable* a = general_lookup($3);
 														free($3);
 
 														if(a == NULL){
-															free_const($5);
+															free_const($5->variable);
 															error_message("The variable is not declared or is const!!!\n");
 														}
 														if($1->type != a->type || a->size==0 ){
-															free_const($5);
+															free_const($5->variable);
 															error_message("The types are not compatible!!!\n");
 														}
 													
-														if($5->value.valINT >= a->size || $5->value.valINT < 0){
-															free_const($5);
+														if($5->variable->value.valINT >= a->size || $5->variable->value.valINT < 0){
+															free_const($5->variable);
 															error_message("The index is out of range!!!\n");
 														}
 
-														free_const($5);
+														free_const($5->variable);
 											}
 				;
 
 
 operations 		: item 							{$$ = $1;}
 				| bool_statement				{
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													$$->type = BOOL;
-													$$->value.valBOOL = $1;
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													$$->variable->type = BOOL;
+													$$->variable->value.valBOOL = $1;
+
+													$$->ast = NULL;												
 												}
 				| operations PLUS operations 	{
 													int compatible = 1;
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													if($1->size!=0 || $3->size!=0)
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->ast = NULL;
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													
+													if($1->variable->size!=0 || $3->variable->size!=0)
 														compatible=0;
 													else
 													{
-														if($1->type == INT && $3->type == INT){
-															$$->type = INT;
-															$$->value.valINT = $1->value.valINT + $3->value.valINT;
+														if($1->variable->type == INT && $3->variable->type == INT){
+															$$->variable->type = INT;
+															$$->variable->value.valINT = $1->variable->value.valINT + $3->variable->value.valINT;
+
+
+															$$->ast = build_AST("+", $1->ast, $3->ast, OP);
 														}
-														else if($1->type == FLOAT && $3->type == FLOAT){
-															$$->type = FLOAT;
-															$$->value.valFLOAT = $1->value.valFLOAT + $3->value.valFLOAT;
+														else if($1->variable->type == FLOAT && $3->variable->type == FLOAT){
+															$$->variable->type = FLOAT;
+															$$->variable->value.valFLOAT = $1->variable->value.valFLOAT + $3->variable->value.valFLOAT;
+
+															free_AST($1->ast);
+															free_AST($3->ast);
 														}
-														else if($1->type == STRING && $3->type == STRING){
-															$$->type = STRING;
-															int size = (strlen($1->value.valSTRING) + strlen($3->value.valSTRING) + 1) * sizeof(char);
-															$$->value.valSTRING = (char*)malloc(size);
-															strcpy($$->value.valSTRING, $1->value.valSTRING);
-															strcat($$->value.valSTRING, $3->value.valSTRING);
+														else if($1->variable->type == STRING && $3->variable->type == STRING){
+															$$->variable->type = STRING;
+															int size = (strlen($1->variable->value.valSTRING) + strlen($3->variable->value.valSTRING) + 1) * sizeof(char);
+															$$->variable->value.valSTRING = (char*)malloc(size);
+															strcpy($$->variable->value.valSTRING, $1->variable->value.valSTRING);
+															strcat($$->variable->value.valSTRING, $3->variable->value.valSTRING);
+
+															free_AST($1->ast);
+															free_AST($3->ast);
 														}
 														else{
 															compatible = 0;
 														}
 													}
 
-													free_const($1);
-													free_const($3);
+													free_const($1->variable);
+													free_const($3->variable);
 
 													if(compatible == 0){
 														error_message("These types can't be added!!!\n");
@@ -1323,28 +1364,34 @@ operations 		: item 							{$$ = $1;}
 												}
 				| operations MINUS operations	{
 													int compatible = 1;
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													if($1->size!=0 || $3->size!=0)
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->ast = NULL;
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													if($1->variable->size!=0 || $3->variable->size!=0)
 														compatible=0;
 													else
 														{
-															if($1->type == INT && $3->type == INT){
-																$$->type = INT;
-																$$->value.valINT = $1->value.valINT - $3->value.valINT;
+															if($1->variable->type == INT && $3->variable->type == INT){
+																$$->variable->type = INT;
+																$$->variable->value.valINT = $1->variable->value.valINT - $3->variable->value.valINT;
+
+																$$->ast = build_AST("-", $1->ast, $3->ast, OP);
 															}
-															else if($1->type == FLOAT && $3->type == FLOAT){
-																$$->type = FLOAT;
-																$$->value.valFLOAT = $1->value.valFLOAT - $3->value.valFLOAT;
+															else if($1->variable->type == FLOAT && $3->variable->type == FLOAT){
+																$$->variable->type = FLOAT;
+																$$->variable->value.valFLOAT = $1->variable->value.valFLOAT - $3->variable->value.valFLOAT;
+																free_AST($1->ast);
+																free_AST($3->ast);
 															}
 															else{
 																compatible = 0;
 															}
 														}
 
-													free_const($1);
-													free_const($3);
+													free_const($1->variable);
+													free_const($3->variable);
 
 													if(compatible == 0){
 														error_message("These types can't be subtracted!!!\n");
@@ -1352,27 +1399,34 @@ operations 		: item 							{$$ = $1;}
 												}
 				| operations SLASH operations	{
 													int compatible = 1;
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													if($1->size!=0 || $3->size!=0)
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->ast = NULL;
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													if($1->variable->size!=0 || $3->variable->size!=0)
 														compatible=0;
 													else
 													{	
-														if(($1->type == INT && $3->type == INT)){
-															$$->type = INT;
-															$$->value.valINT = ($1->value.valINT / $3->value.valINT);
+														if(($1->variable->type == INT && $3->variable->type == INT)){
+															$$->variable->type = INT;
+															$$->variable->value.valINT = ($1->variable->value.valINT / $3->variable->value.valINT);
+
+															$$->ast = build_AST("/", $1->ast, $3->ast, OP);
 														}
-														else if($1->type == FLOAT && $3->type == FLOAT){
-															$$->type = FLOAT;
-															$$->value.valFLOAT = $1->value.valFLOAT / $3->value.valFLOAT;
+														else if($1->variable->type == FLOAT && $3->variable->type == FLOAT){
+															$$->variable->type = FLOAT;
+															$$->variable->value.valFLOAT = $1->variable->value.valFLOAT / $3->variable->value.valFLOAT;
+
+															free_AST($1->ast);
+															free_AST($3->ast);
 														}
 														else{
 															compatible = 0;
 														}
 
-														free_const($1);
-														free_const($3);
+														free_const($1->variable);
+														free_const($3->variable);
 
 														if(compatible == 0){
 															error_message("These types can't be divided!!!\n");
@@ -1381,28 +1435,35 @@ operations 		: item 							{$$ = $1;}
 												}
 				| operations MULT operations	{
 													int compatible = 1;
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													if($1->size!=0 || $3->size!=0)
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->ast = NULL;
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													if($1->variable->size!=0 || $3->variable->size!=0)
 														compatible=0;
 													else
 													{	
-														if($1->type == INT && $3->type == INT){
-															$$->type = INT;
-															$$->value.valINT = $1->value.valINT * $3->value.valINT;
+														if($1->variable->type == INT && $3->variable->type == INT){
+															$$->variable->type = INT;
+															$$->variable->value.valINT = $1->variable->value.valINT * $3->variable->value.valINT;
+
+															$$->ast = build_AST("*", $1->ast, $3->ast, OP);
 														}
-														else if($1->type == FLOAT && $3->type == FLOAT){
-															$$->type = FLOAT;
-															$$->value.valFLOAT = $1->value.valFLOAT * $3->value.valFLOAT;
+														else if($1->variable->type == FLOAT && $3->variable->type == FLOAT){
+															$$->variable->type = FLOAT;
+															$$->variable->value.valFLOAT = $1->variable->value.valFLOAT * $3->variable->value.valFLOAT;
+
+															free_AST($1->ast);
+															free_AST($3->ast);
 														}
 														else{
 															compatible = 0;
 														}
 													}
 
-													free_const($1);
-													free_const($3);
+													free_const($1->variable);
+													free_const($3->variable);
 
 													if(compatible == 0){
 														error_message("These types can't be multiplyed!!!\n");
@@ -1410,24 +1471,28 @@ operations 		: item 							{$$ = $1;}
 												}
 				| operations REMAIDER operations {
 													int compatible = 1;
-													$$ = (struct Variable*)malloc(sizeof(struct Variable));
-													$$->name = (char*)malloc(strlen("@const") + 1);
-													strcpy($$->name, "@const");
-													if($1->size!=0 || $3->size!=0)
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->ast = NULL;
+													$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+													$$->variable->name = (char*)malloc(strlen("@const") + 1);
+													strcpy($$->variable->name, "@const");
+													if($1->variable->size!=0 || $3->variable->size!=0)
 														compatible=0;
 													else
 														{	
-															if(($1->type == INT && $3->type == INT)){
-																$$->type = INT;
-																$$->value.valINT = $1->value.valINT % $3->value.valINT;
+															if(($1->variable->type == INT && $3->variable->type == INT)){
+																$$->variable->type = INT;
+																$$->variable->value.valINT = $1->variable->value.valINT % $3->variable->value.valINT;
+
+																$$->ast = build_AST("%", $1->ast, $3->ast, OP);
 															}
 															else{
 																compatible = 0;
 															}
 														}
 
-													free_const($1);
-													free_const($3);
+													free_const($1->variable);
+													free_const($3->variable);
 
 													if(compatible == 0){
 														error_message("These types can't be divided!!!\n");
@@ -1439,11 +1504,18 @@ operations 		: item 							{$$ = $1;}
 														free_const($1);
 														error_message("Procedures don't return any value!!!\n");
 													}
-
-													$$ = $1;
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->variable = $1;
 												}
-				| class_access_var
-				| class_access_fun
+				| class_access_var				{
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->variable = $1;
+												}
+				| class_access_fun				{
+													$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+													$$->variable = $1;	
+												}
+
 				;
 
 /*Control flow statements*/
@@ -1456,166 +1528,213 @@ bool_statement 	: bool_expresion						{$$ = $1;}
 
 bool_expresion	: 
 				  item						{
-												if($1->type != BOOL){
+												free_AST($1->ast);
+												if($1->variable->type != BOOL){
 													free_const($1);
 													error_message("Thise variables is not of type bool!!!\n");
 												}
 
-												$$ = $1->value.valBOOL;
+												$$ = $1->variable->value.valBOOL;
 												free_const($1);
 											}
 				| item NEQ item 			{
-												if($1->type != $3->type || $1->size != 0 || $3->size != 0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size != 0 || $3->variable->size != 0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) != 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) != 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT != $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT != $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR != $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL != $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT != $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT != $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR != $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL != $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 				| item EQ item				{
-												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size!=0 || $3->variable->size!=0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) == 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) == 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT == $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT == $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR == $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL == $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT == $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT == $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR == $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL == $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 
 				| item LESS item			{
-												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size!=0 || $3->variable->size!=0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) < 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) < 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT < $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT < $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR < $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL < $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT < $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT < $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR < $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL < $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 				| item LESSOREQ item		{
-												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size!=0 || $3->variable->size!=0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) <= 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) <= 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT <= $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT <= $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR <= $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL <= $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT <= $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT <= $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR <= $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL <= $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 				| item GREATER item			{
-												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size!=0 || $3->variable->size!=0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) > 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) > 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT > $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT > $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR > $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL > $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT > $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT > $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR > $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL > $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 				| item GREATEROREQ item		{
-												if($1->type != $3->type || $1->size!=0 || $3->size!=0){
-													free_const($1);
-													free_const($3);
+												free_AST($1->ast);
+												free_AST($3->ast);
+												if($1->variable->type != $3->variable->type || $1->variable->size!=0 || $3->variable->size!=0){
+													free_const($1->variable);
+													free_const($3->variable);
 													error_message("These types can't be compared!!!\n");
 												}
 
-												if($1->type == STRING)
-													$$ = strcmp($1->value.valSTRING, $3->value.valSTRING) >= 0;
+												if($1->variable->type == STRING)
+													$$ = strcmp($1->variable->value.valSTRING, $3->variable->value.valSTRING) >= 0;
 												else
-													$$ = ($1->type == INT) ? $1->value.valINT >= $3->value.valINT 
-														: ($1->type == FLOAT) ? $1->value.valFLOAT >= $3->value.valFLOAT
-														: ($1->type == CHAR) ? $1->value.valCHAR >= $3->value.valCHAR
-														: ($1->type == BOOL) ? $1->value.valBOOL >= $3->value.valBOOL : 0;
+													$$ = ($1->variable->type == INT) ? $1->variable->value.valINT >= $3->variable->value.valINT 
+														: ($1->variable->type == FLOAT) ? $1->variable->value.valFLOAT >= $3->variable->value.valFLOAT
+														: ($1->variable->type == CHAR) ? $1->variable->value.valCHAR >= $3->variable->value.valCHAR
+														: ($1->variable->type == BOOL) ? $1->variable->value.valBOOL >= $3->variable->value.valBOOL : 0;
 
-												free_const($1);
-												free_const($3);
+												free_const($1->variable);
+												free_const($3->variable);
 											}
 				;
 
 item            : 
 				ID {
-						$$ = general_lookup($1);
-						free($1);
-						if($$ == NULL){
+						$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+						$$->variable = general_lookup($1);
+						if($$->variable == NULL){
 							error_message("The variable is not declared!!!\n");
 						}
+						if($$->variable->type == INT)
+							$$->ast = build_AST($1, NULL, NULL, IDENTIFIER);
+						else
+							$$->ast = NULL;
+						free($1);
 					}
-				| constant_value
-				| class_access_var
-				| ID '[' item ']' 			{
+				| constant_value	{
+										$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+										$$->variable = $1;
+										if($$->variable->type == INT){
+											$$->ast = build_AST(&$1->value.valINT, NULL, NULL, NUMBER);
+										}
+										else
+											$$->ast = NULL;
+									}
+				| class_access_var	{
+										$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+										$$->variable = $1;
+										if($$->variable->type == INT)
+											$$->ast = build_AST(&$1->value.valINT, NULL, NULL, NUMBER);
+										else
+											$$->ast = NULL;
+									}
+				| ID '[' item ']' 			{	
+												$$ = (struct AST_VAR*)malloc(sizeof(struct AST_VAR));
+												
 												struct Variable* a = general_lookup($1);
 												free($1);
 												if(a == NULL){
-													free_const($3);
+													free_const($3->variable);
+													free_AST($3->ast);
 													error_message("The variable is not declared or is const!!!\n");
 												}
 
 												if(a->size==0 ){
-													free_const($3);
+													free_const($3->variable);
+													free_AST($3->ast);
 													error_message("The types are not compatible!!!\n");
 												}
 
-												if($3->type != INT){
-													free_const($3);
+												if($3->variable->type != INT){
+													free_const($3->variable);
+													free_AST($3->ast);
 													error_message("The index is of the wrong type!!!\n");
 												}
 											
-												if($3->value.valINT >= a->size || $3->value.valINT < 0){
-													free_const($3);
+												if($3->variable->value.valINT >= a->size || $3->variable->value.valINT < 0){
+													free_const($3->variable);
+													free_AST($3->ast);
 													error_message("The index is out of range!!!\n");
 												}
 
-												$$ = (struct Variable*)malloc(sizeof(struct Variable));
-												$$->name = (char*)malloc(sizeof(char)*(strlen("@const") + 1));
-												strcpy($$->name,"@const");
-												$$->type = a->type;
-												$$->size = 0;
-												$$->value.valINT = 0;
+												$$->variable = (struct Variable*)malloc(sizeof(struct Variable));
+												$$->variable->name = (char*)malloc(sizeof(char)*(strlen("@const") + 1));
+												strcpy($$->variable->name,"@const");
+												$$->variable->type = a->type;
+												$$->variable->size = 0;
+												$$->variable->value.valINT = 0;
+	
 
-												free_const($3);
+												if($$->variable->type == INT)
+													$$->ast = build_AST(&$$->variable->value.valINT, NULL, NULL, NUMBER);
+												else
+													$$->ast = NULL;
+
+
+												free_const($3->variable);
+												free_AST($3->ast);
 											}
 				;
 				

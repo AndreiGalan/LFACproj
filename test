@@ -1,8 +1,84 @@
-int iii = 1000;
-int jjj = 1000;
+int i = 1000;
+int j = i;
+
+
+
+string k = "salut";
+
+class CLASS
+{
+    int i = 0;
+    int j = 100;
+    int x[100];
+
+    fn ll(int b) -> int
+    {
+        int a = 0;
+        return a;
+    }
+
+}
+
+
+pr ll(int lll){
+    int a = 100;
+    int kk = 99;
+    int b[100];
+    int c[100];
+
+    
+    TypeOf(a + a);
+
+    Eval(c[0]+a);
+    Eval(c[0]+a);
+
+}
+
+pr l1(int b[100],float h[20]){
+    int a = 100;
+    int kk = 99;
+    int c[100];
+    b[1]=b[1];
+    c[0] = 1;
+
+
+   Eval(a + kk);
+   TypeOf(c[0] + c[0]);
+    
+}
+
+
+fn pp(int a, string b) -> int
+{
+    
+    return 1;
+}
+
+fn p1(int a, string b) -> int
+{
+    int c=pp(a,b);
+    return a;
+}
+
 
 
 main
 {
-    Eval(iii + jjj);
+    CLASS p[100];
+    CLASS p1;
+    int a;
+    int x[2];
+    int c[10];
+
+
+    a = p1.x[1]+1;
+    a=p1(p[1].ll(1),"");
+    p1.x[1]=x[1];
+    p1.ll(2);
+    bool b = p[1].x[1] > x[a];
+
+    Eval(i + p[1].j);
+    Eval(c[0]+c[9]);
+
+    TypeOf(p1);
 }

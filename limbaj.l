@@ -62,6 +62,7 @@
 \'.\' { yylval.valCHAR = yytext[1]; return CHAR_CONST; }
 
 
+
 "//".* {}
 "/"\*(.*(\n)*)*\*"/"    {
                             char* p = yytext;
