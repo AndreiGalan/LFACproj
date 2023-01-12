@@ -13,7 +13,7 @@ class CLASS
 
     fn ll(int b) -> int
     {
-        x[6] = 4;
+        x[1] = 4;
         int a = 0;
         return a;
     }

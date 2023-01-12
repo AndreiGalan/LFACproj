@@ -133,8 +133,8 @@ void error_message(const char* errorMessage)
 	free_functions();
 	free_classes();
 
-	fprintf(stderr, "Error at line: %d; ", yylineno);
-    fprintf(stderr, "%s", errorMessage);
+	fprintf(stderr, "\033[0;31mError at line: %d; ", yylineno);
+    fprintf(stderr, "%s\033[0m", errorMessage);
 	exit(1);
 }
 
@@ -1962,7 +1962,7 @@ void free_classes()
 }
 
 int yyerror(char * s){
-	printf("eroare: %s la linia:%d\n",s,yylineno);
+	printf("\033[0;31mError: %s at line: %d;\033[0m\n",s,yylineno);
 }
 
 int main(int argc, char** argv){
