@@ -8,6 +8,8 @@ extern FILE* yyin;
 extern char* yytext;
 extern int yylineno;
 
+struct Class* current_class = NULL;
+
 int array_type = 0;
 
 struct Function* functions[100];
@@ -249,7 +251,8 @@ class			: CLASS ID 	{
 								strcpy(classes[nr_classes]->name, $2);
 								classes[nr_classes]->nr_variables = 0;
 								classes[nr_classes]->nr_functions = 0;
-							} '{' class_block '}' {++nr_classes;}
+								current_class = classes[nr_classes];
+							} '{' class_block '}' {++nr_classes; current_class = NULL;}
 				;
 
 class_block		: 
@@ -564,6 +567,11 @@ function		: PROCEDURE ID
 									error_message("The function is already delcared!!!\n");
 								}
 								stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);
+
+								if(current_class)
+									for(int i = 0; i < current_class->nr_variables; ++i)
+										add_element(peek(stack_scope[curr_pos]), current_class->variables[i]);
+
 								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
 								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
 								strcpy(functions[nr_functions]->name, $2);
@@ -579,6 +587,10 @@ function		: PROCEDURE ID
 									error_message("The function is already delcared!!!\n");
 								}
 								stack_scope[++curr_pos] = createStack(); push(stack_scope[curr_pos]);
+								if(current_class)
+									for(int i = 0; i < current_class->nr_variables; ++i)
+										add_element(peek(stack_scope[curr_pos]), current_class->variables[i]);
+										
 								functions[nr_functions] = (struct Function*)malloc(sizeof(struct Function));
 								functions[nr_functions]->name = (char*)malloc((strlen($2)+1)*sizeof(char));
 								strcpy(functions[nr_functions]->name, $2);

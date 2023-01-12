@@ -13,6 +13,7 @@ class CLASS
 
     fn ll(int b) -> int
     {
+        x[6] = 4;
         int a = 0;
         return a;
     }
@@ -78,7 +79,7 @@ main
     bool b = p[1].x[1] > x[a];
 
     Eval(i + p[1].j);
-    Eval(c[0]+c[9]);
+    Eval(p[1].x[1]+c[9]);
 
     TypeOf(p1);
 }
